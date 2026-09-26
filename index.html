@@ -117,7 +117,10 @@
   #ttBig.on { opacity:1; transform:translate(-50%,0) scale(1); }
   #ttBig b { display:block; font:800 54px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing:.02em; }
   #ttBig small { display:block; font-size:16px; opacity:.85; margin:4px 0; } #ttBig em { display:block; font-style:normal; font-weight:700; color:#ffd23a; margin-top:6px; letter-spacing:.1em; }
-  #ttBig.cd b { font-size:96px; } #ttBig.go b { color:#8dff6a; } #ttBig.dq b { color:#ff6a55; } #ttBig.fin b { color:#ffd23a; }
+  #ttBig.cd b { font-size:96px; }
+  #ttLights { display:flex; gap:14px; justify-content:center; padding:10px 16px; border-radius:18px; background:rgba(10,20,24,.55); }
+  #ttLights i { width:34px; height:34px; border-radius:50%; background:#3a1512; box-shadow:inset 0 0 6px rgba(0,0,0,.6); }
+  #ttLights i.r { background:#ff3b2e; box-shadow:0 0 18px #ff3b2e; } #ttLights i.g { background:#3dff6a; box-shadow:0 0 18px #3dff6a; } #ttBig.go b { color:#8dff6a; } #ttBig.dq b { color:#ff6a55; } #ttBig.fin b { color:#ffd23a; }
   #ttPass, #ttSplit, #ttOut, #ttCue { position:fixed; left:50%; transform:translateX(-50%); opacity:0; transition:opacity .2s; pointer-events:none; z-index:6;
     font-weight:700; letter-spacing:.06em; text-shadow:0 2px 12px rgba(0,30,40,.6); white-space:nowrap; }
   #ttPass { top:43%; font-size:22px; } #ttPass.good { color:#8dff6a; } #ttPass.bad { color:#ff6a55; }
@@ -981,10 +984,12 @@ WR.T = {
   st0:[41.7,50,39,27.8], st1:[0.3,0.4,0.2,0.05],                                         // D_800D9460/70 low-speed steering boost
   bb8a:[28,27,32,33], bb8b:[22,21,26,27],                                                // D_800D94A0/B0 max steering angle (deg)
   roll0:[0.023,0.008,0.017,0.009], roll1:[0.0317,0.024,0.0431,0.019],                     // D_800D95D0/E0 banking from stern slip
+  bal0:[0.033,0.027,0.033,0.032], bal1:[0.0515,0.0546,0.067,0.044],                       // D_800D9600/10 rider side lean
   bc8a:[0.45,0.4,1.2,0.7], bc8b:[0.35,0.3,1.0,0.4], bcca:[0.95,0.94,0.95,0.95], bccb:[1,1,1,1], bd0:[30,80,99,30], // thrust curve
   bc4a:[0.589,0.5722,0.5127,0.575], bc4b:[0.556,0.5472,0.4827,0.545],                    // D_800D9580/90 thrust
   boost:[0.1,0.16,0.09,0.11],                                                            // D_800D95B0 thrust added at full power
   yaw:[0.002,0.0027,0.0021,0.002],                                                       // D_800D9480 slow-speed pivot
+  roll:[0.72,0.75,0.63,0.63], flip:[0.55,0.55,0.55,0.53],                                // D_800D9400/10 stunt strength
 };
 // gSinTable lookups: 4096 steps a turn, index truncated like the game's (s32) cast
 const wrSin = i => Math.sin(((i|0) & 4095)*(Math.PI/2048));
@@ -1008,12 +1013,14 @@ function wrCraft(r, tune){
   S.k1568 = T.pt0[r]; S.k156C = T.pt1[r]; S.k1570 = T.pt2[r]; S.s1580 = T.st0[r]; S.s1584 = T.st1[r];
   S.bb8 = L(T.bb8a[r], T.bb8b[r], hd/11);
   S.k1594 = L(T.roll0[r], T.roll1[r], gr/11); S.k1590 = S.k1594;
+  S.k158C = L(T.bal0[r], T.bal1[r], gr/11);                                // rider's side lean from stern slip
   const te = en/11;
   S.bc8 = L(T.bc8a[r], T.bc8b[r], te); S.bcc = L(T.bcca[r], T.bccb[r], te);
   S.bd0 = (T.bd0[r]/1.8)/5 + (((100 - T.bd0[r])/1.8)/5)*te;
   S.bc4 = L(T.bc4a[r], T.bc4b[r], gr/11);
   S.bd4 = 2048/S.bd0; S.bd8 = (1 - S.bc8)*0.5; S.be0 = 1 - S.bcc; S.bdc = 1024/(11.111112 - S.bd0);
-  S.boost = T.boost[r]; S.yaw = T.yaw[r]; S.wake = T.wake[r];
+  S.boost = T.boost[r]; S.yaw = T.yaw[r]; S.wake = T.wake[r]; S.kRoll = T.roll[r]; S.kFlip = T.flip[r];
+  S.fc = 0; S.trick = 0; S.t159C = S.t15A0 = S.t15A4 = S.t15A8 = -99; S.k15C8 = 0; S.tricks = 0;
   S.dt = 0.992; S.ky = 0.85; S.kB = 0.03; S.grav = -0.192; S.thrMul = 1;           // func_8006390C
   S.level = 0; S.steerMax = S.bb8; S.sS = 0; S.cS = 1; S.BF8 = 0; S.p15C4 = 0;
   // particle weights ramp from w4 at the centre to w8 at the farthest particle (func_8004AC80)
@@ -1030,7 +1037,8 @@ function wrPlace(S, x, z, a){
     S.P[i*3] = x + lx*c + lz*s; S.P[i*3+1] = ly; S.P[i*3+2] = z - lx*s + lz*c; }
   S.V.fill(0); S.Pp.set(S.P); S.Pq.set(S.P);
   S.cen = [x, 0, z]; S.delta = [0,0,0]; S.mdir = [0,0,0]; S.spd = 0; S.B98 = 0; S.B78 = [0,0,0]; S.B90 = 0;
-  S.wetCount = 8; S.wetAny = 1; S.kLat = S.k15E8; S.kB = 0.03; S.ky = 0.85; S.B60 = 0; S.C20 = [0,0,0];
+  S.wetCount = 8; S.wetAny = 1; S.kLat = S.k15E8; S.kB = 0.03; S.ky = 0.85; S.B60 = 0; S.C20 = [0,0,0]; S.C2C = [0,0,0];
+  S.C0C = 34.11; S.C10 = -27.3; S.bal = 0; S.trick = 0;                                  // the rider's crouch height, fore/aft shift, side lean
   wrOrient(S); S.BE4 = S.cen.slice();
   S.C14 = [0,1,2].map(k => S.cen[k] + 0.1806645*S.up[k] - 26.9998535*S.fwd[k]);
 }
@@ -1046,7 +1054,23 @@ function wrOrient(S){
 // start of a frame: controls (func_80061184) and the per-frame set-up of the craft step (func_80063C88).
 // c: { x, y (shaped stick, -70..70), thr (A/Z), slide (R) }, power 0..5
 function wrFrameBegin(S, c, power){
-  S.B5E = c.x; S.B5F = c.y; S.C66 = c.thr ? 1 : 0;
+  S.B5E = c.x; S.B5F = c.y; S.C66 = c.thr ? 1 : 0; S.fc++;
+  // stunts (func_80061184 + func_80063C88): when the stick last sat past 15 each way, then a snap to full the other way
+  // within 3 frames while airborne above 60 km/h on the throttle starts a trick: a barrel roll either way (1, 2),
+  // a dive (3: buoyancy nearly off, the nose goes under) or a flip (4). It lasts while the stick is held there
+  if (S.B5E < -14) S.t159C = S.fc; else if (S.B5E >= 15) S.t15A0 = S.fc;
+  if (S.B5F < -14) S.t15A8 = S.fc; else if (S.B5F >= 15) S.t15A4 = S.fc;
+  if (S.trick === 0){
+    if (S.wetCount === 0 && S.B90 > 33.333336 && S.C66){
+      if (S.B5E < -69 && S.fc - S.t15A0 < 3){ S.trick = 2; S.k15AC = -S.kRoll; S.tricks++; }
+      else if (S.B5E >= 70 && S.fc - S.t159C < 3){ S.trick = 1; S.k15AC = S.kRoll; S.tricks++; }
+      else if (S.B5F < -69 && S.fc - S.t15A4 < 3){ S.trick = 4; S.k15AC = S.kFlip; S.tricks++; }
+      else if (S.B5F >= 70 && S.fc - S.t15A8 < 3){ S.trick = 3; S.k15C8 = 0; S.tricks++; }
+    }
+  } else if (S.trick === 2){ if (S.B5E >= -69) S.trick = 0; else S.B5E = 0; }
+  else if (S.trick === 1){ if (S.B5E < 70) S.trick = 0; else S.B5E = 0; }
+  else if (S.trick === 3){ if (S.wetCount >= 8 && ++S.k15C8 > 30) S.trick = 0; if (S.B5F < 70) S.trick = 0; }
+  else if (S.trick === 4){ if (S.B5F >= -69) S.trick = 0; else S.B5F = 0; }
   S.B60 += clamp(S.B5E - S.B60, -15, 15);                                  // display lean, slews 15/frame (D_800D49DC)
   S.thrMul = 1;                                                             // unk1578
   S.dt = 0.992;                                                             // D_800D4AC4 (0.973 only on Drake Lake's mud)
@@ -1059,6 +1083,7 @@ function wrFrameBegin(S, c, power){
   if (S.wetCount === 12) S.thrMul *= 0.45;                                  // D_800D49C0: jet buried
   const ang = Math.trunc(S.B5E*S.steerMax/70*4096/360);
   S.sS = wrSin(ang); S.cS = wrSin(ang + 0x400);
+  if (S.trick){ S.sS = 0; S.cS = 1; }                                      // no steering during a trick
   S.BF8 = S.B90 < 11.111112 ? S.yaw*S.B5E : 0;                              // slow: the stick pivots the hull
   const hs = Math.hypot(S.B78[0], S.B78[2]);
   if (S.wetCount === 12) S.p15C4 = 0;                                       // unk15C4: the rider leans fore/aft
@@ -1088,9 +1113,15 @@ function wrSub(S, water, walls, probes){
   { const bx = S.cS*f[0] + S.sS*lf[0], by = S.cS*f[1] + S.sS*lf[1], bz = S.cS*f[2] + S.sS*lf[2];
     const hl = bx*bx + bz*bz, k = hl ? S.B98/Math.sqrt(hl) : 0;
     for (const i of [2, 0]){ V[i*3] += bx*k; V[i*3+1] += by*S.B98; V[i*3+2] += bz*k; } }  // on the stern chines
-  // ---- fore/aft lean: a pitching couple spread linearly along the hull (the rider's point is taken as straight up)
+  // ---- fore/aft lean: a pitching couple spread linearly along the hull, pushed along the line from the hull to the
+  // rider's hips (square to the heading). The hips sit C0C up and 20 units x the side lean over; the more the rider
+  // leans out, the less of the push goes into pitch (1 - sqrt(1 - t^4) x 0.7)
   if (S.p15C4 !== 0){
-    const k = S.p15C4, add = (i, m) => { V[i*3] += up[0]*k*m; V[i*3+1] += up[1]*k*m; V[i*3+2] += up[2]*k*m; };
+    let dx = up[0]*S.C0C - lf[0]*20*S.bal, dy = up[1]*S.C0C - lf[1]*20*S.bal, dz = up[2]*S.C0C - lf[2]*20*S.bal;
+    const df = dx*f[0] + dy*f[1] + dz*f[2]; dx -= df*f[0]; dy -= df*f[1]; dz -= df*f[2];
+    const dl = Math.hypot(dx, dy, dz) || 1; dx /= dl; dy /= dl; dz /= dl;
+    const t = up[0]*dx + up[1]*dy + up[2]*dz, t2 = Math.min(t*t, 1);
+    const k = (1 - Math.sqrt(1 - t2*t2)*S.k1568)*S.p15C4, add = (i, m) => { V[i*3] += dx*k*m; V[i*3+1] += dy*k*m; V[i*3+2] += dz*k*m; };
     add(7,-1); add(6,-1); add(10,1); add(9,1); add(5,-3); add(3,-3); add(2,3); add(0,3);
   }
   // ---- gravity on the eight chine particles, plus the banking couple from the stern's side slip (C20)
@@ -1100,15 +1131,27 @@ function wrSub(S, water, walls, probes){
   if (S.BF8){ const b = S.BF8;
     for (const i of [3,4,5]){ V[i*3] -= b*lf[0]; V[i*3+1] -= b*lf[1]; V[i*3+2] -= b*lf[2]; }
     for (const i of [0,1,2]){ V[i*3] += b*lf[0]; V[i*3+1] += b*lf[1]; V[i*3+2] += b*lf[2]; } }
+  // ---- stunts: barrel rolls twist the aft half about the left axis, the flip pushes bow and stern opposite ways
+  if (S.trick === 1 || S.trick === 2){
+    const q = S.k15AC, gx = q*lf[0], gy = q*lf[1] - S.grav*0.5, gz = q*lf[2], h = S.grav*0.5;
+    for (const i of [2, 10, 0, 9]){ V[i*3] += gx; V[i*3+1] += gy; V[i*3+2] += gz; }
+    for (const i of [1, 11]){ V[i*3] -= gx; V[i*3+1] -= gy; V[i*3+2] -= gz; }
+    V[13] += h; V[25] += h;
+  } else if (S.trick === 4){
+    const q = S.k15AC, gx = q*up[0], gz = q*up[2], h = S.grav*0.5, ya = q*up[1] - h, yb = q*up[1] + h;
+    V[9] += gx; V[10] += ya; V[11] += gz; V[12] += gx; V[13] += yb; V[14] += gz; V[15] += gx; V[16] += ya; V[17] += gz;
+    V[0] -= gx; V[1] -= yb; V[2] -= gz; V[3] -= gx; V[4] -= ya; V[5] -= gz; V[6] -= gx; V[7] -= yb; V[8] -= gz;
+    V[25] += h; V[19] -= h; V[34] += h; V[28] -= h; V[22] -= h; V[31] -= h;
+  }
   // ---- airborne: moving along its own deck normal the hull is pushed back (D_800D498C)
-  if (S.wetCount === 0){
+  if (S.wetCount === 0 && S.trick === 0){
     const t = (S.delta[0]*up[0] + S.delta[2]*up[2])*-0.0045, ax = up[0]*t*0.1, ay = up[1]*t, az = up[2]*t*0.1;
     for (let i=0;i<12;i++){ V[i*3] += ax; V[i*3+1] += ay; V[i*3+2] += az; }
   }
   // ---- buoyancy strength (unk18): strong normally, weak when the nose is driving down into the water
   { const t = f[1]*-0.3*(S.delta[0]*f[0] + S.delta[1]*f[1] + S.delta[2]*f[2]);
     const tgt = t < 0 ? 0.03 : t > 1 ? 0.004 : 0.03 + (0.004 - 0.03)*t;
-    if (S.kB < 0.004) S.kB += 0.001; else S.kB = tgt; }
+    if (S.trick === 3) S.kB = 0.003; else if (S.kB < 0.004) S.kB += 0.001; else S.kB = tgt; }
   // ---- buoyancy (func_8004E0A4): each particle below the surface gets an impulse along the surface normal,
   // proportional to its depth, clamped at 0.8 x 75.954 x unk18. The game's facet normal comes out with 1/64 of the
   // true slope (it normalises with 4096 where 64 was meant, findings §15), so the push is all but vertical.
@@ -1168,7 +1211,15 @@ function wrFrameEnd(S){
   const c = S.cen, u = S.up, f = S.fwd;
   S.B78 = [c[0]-S.BE4[0], c[1]-S.BE4[1], c[2]-S.BE4[2]]; S.B90 = Math.hypot(...S.B78);
   const n = [0,1,2].map(k => c[k] + 0.1806645*u[k] - 26.9998535*f[k]);    // a point 27 units aft: the jet
-  S.C20 = [n[0]-S.C14[0], n[1]-S.C14[1], n[2]-S.C14[2]]; S.C14 = n;
+  const c20 = [n[0]-S.C14[0], n[1]-S.C14[1], n[2]-S.C14[2]]; S.C14 = n;
+  S.C2C = [c20[0]-S.C20[0], c20[1]-S.C20[1], c20[2]-S.C20[2]]; S.C20 = c20;
+  // the rider's balance (func_8005DE24): leans with the stern's side slip, crouches under vertical acceleration (a
+  // spring, 0.3 down / 0.2 up, never below 10), shifts fore/aft with the hull's acceleration and the stick
+  const lf = S.left, up = S.up;
+  S.bal = clamp(S.k158C*(lf[0]*S.C20[0] + lf[1]*S.C20[1] + lf[2]*S.C20[2]), -1, 1);
+  const dh = (34.11 + -2.5*(up[0]*S.C2C[0] + up[1]*S.C2C[1] + up[2]*S.C2C[2])) - S.C0C;
+  S.C0C = Math.max(10, S.C0C + dh*(dh < 0 ? 0.3 : 0.2));
+  S.C10 += ((f[0]*S.C2C[0] + f[1]*S.C2C[1] + f[2]*S.C2C[2])*5 - 27.3 - S.C10)*0.2 + S.B5F/40;
   let wc = 0; for (let i=0;i<12;i++) wc += S.wet[i];
   const was = S.wetAny; S.wetCount = wc; S.wetAny = wc ? 1 : 0;
   S.landed = S.wetAny && !was; S.tookOff = was && !S.wetAny;
@@ -3708,19 +3759,11 @@ const TT_WATER = {
   "Glacier Coast": {"swells":[[3000,5000,180,120,60,24,34,64,32,2,0,1,0],[400,-6000,20,290,40,28,32,96,24,2,0,2,14],[-2200,3000,210,120,60,24,45,96,24,4,0,2,1],[-100,-4100,315,250,60,32,50,64,32,2,0,1,1],[-600,-4000,315,250,60,32,40,64,32,2,0,1,14]],"marks":[[-455,4962,4],[-455,5038,4],[25,5038,4],[25,4962,4],[505,4962,4],[505,5038,4],[170,5420,4],[-70,5420,4],[-70,5080,4],[170,5080,4],[985,5038,4],[985,4962,4],[-950,5120,4],[-610,4880,4],[-950,4880,4],[-610,5120,4],[290,-4760,4],[290,-5060,4],[-2012,2000,4],[-2190,2000,4],[-1590,2000,4],[-1412,2000,4],[-2590,1400,4],[-2412,1400,4],[-1812,1400,4],[-1990,1400,4]],"pink":[[5000,-5500],[5000,-6000],[5000,-6500],[4750,-7000],[4500,-7500],[4250,-8000],[3750,-8250],[3250,-8500],[2750,-8500],[1750,-8500],[750,-8000],[250,-7750],[1250,-8250],[2250,-8500],[-250,-7500],[-750,-7250],[-2250,-6250],[-1750,-6750],[-1250,-7000],[-2750,-5750],[-4250,-3750],[-4000,-4250],[-3250,-5250],[-3750,-4750],[-4750,-2750],[-4500,-3250],[-5250,-750],[-5250,-250],[-5000,-2250],[-4750,1250],[-5250,250],[-5000,750],[-5250,-1250],[-5250,-1750],[-4500,1750],[-4250,2250],[-2500,4250],[-3500,3250],[-3000,3750],[-4000,2750],[-2000,4750],[-1000,5750],[-1500,5250],[0,6750],[500,7250],[2000,7750],[1500,7750],[-500,6250],[1000,7500],[3000,7750],[2500,7750],[5000,5500],[3500,7750],[4000,7750],[4500,7500],[5000,3000],[5000,3500],[5000,4500],[5000,4000],[5000,6500],[4750,7000],[5000,6000],[5000,5000],[5000,-3000],[5000,-2500],[5000,-1500],[5000,-2000],[5000,-4000],[5000,-3500],[5000,-4500],[5000,-5000],[5000,-1000],[5000,-500],[5000,500],[5000,0],[5000,2000],[5000,2500],[5000,1500],[5000,1000]],"radius":8500},
   "Southern Island": {"swells":[],"marks":[],"pink":[[-4738,6377],[-4759,5977],[-4780,5578],[-4801,5178],[-4822,4779],[-4843,4379],[-4864,3980],[-4885,3580],[-4906,3181],[-4927,2782],[-4948,2382],[-4969,1983],[-4989,1583],[-5010,1184],[-5031,784],[-5052,385],[-5073,-15],[-5094,-414],[-5145,-865],[-5166,-1264],[-5187,-1664],[-5208,-2063],[-5229,-2463],[-5250,-2862],[-5271,-3261],[-5292,-3661],[-5313,-4060],[-5334,-4460],[-5355,-4859],[-5375,-5259],[7038,-5870],[6898,-5551],[6657,-5231],[6416,-4912],[6175,-4592],[5935,-4273],[5694,-3953],[5453,-3634],[5213,-3314],[4972,-2995],[4731,-2675],[4490,-2356],[4250,-2037],[4009,-1717],[3768,-1398],[3527,-1078],[3287,-759],[3046,-439],[2805,-120],[2565,200],[2324,519],[2083,839],[1842,1158],[1592,1536],[1500,1928],[1608,2305],[1914,2562],[2220,2819],[2527,3076],[2833,3333],[3040,3690],[3140,4090],[3040,4490],[2871,4820],[2643,5149],[2315,5379],[1988,5608],[1660,5838],[1332,6067],[1005,6297],[677,6526],[349,6755],[22,6985],[-306,7214],[-634,7444],[-961,7673],[-1289,7903],[-1617,8132],[-1944,8361],[-2272,8591],[-2600,8820],[-2987,8922],[-3355,8968],[-3765,8925],[-4107,8694],[-4372,8378],[-4508,8002],[-4645,7626],[-4696,7175],[-4717,6776]],"radius":8968}
 };
-// the CPU riders' racing-line points of each layout (the route list's other entries). The game checks the craft
-// against every entry of that list (func_8007DF4C), so these are invisible 62-unit posts on the water
-const TT_LINES = {
-  "Sunny Beach": {"normal":[[1948,1186],[4392,1002],[4501,1143],[5462,844],[6136,438],[6204,109],[5690,0],[6230,-82],[6141,-298],[5788,-637],[5246,-757],[4721,-884],[4710,-980],[4130,-1116],[3899,-1001],[3201,-1101],[3220,-982],[1539,-1316],[481,-1323],[-165,-1203],[-173,-1046],[-596,-1055],[-683,-1034],[-1568,-1212],[-2326,-1234],[-3231,-1282],[-2652,-1281],[-3642,-1193],[-4383,-1051],[-5010,-1000],[-5034,-1235],[-5436,-846],[-5890,-468],[-6123,-16],[-5700,0],[-5823,472],[-4976,878],[-4093,898],[-3364,832],[-3274,867],[-3298,765],[-3203,779],[-2389,888]],"hard":[[1948,1186],[4392,1002],[4501,1143],[5462,844],[6136,438],[6204,109],[5690,0],[6230,-82],[6141,-298],[5788,-637],[5246,-757],[4721,-884],[4130,-1116],[3899,-1001],[3201,-1101],[1539,-1316],[481,-1323],[-185,-1285],[-553,-1147],[-656,-1102],[-1568,-1212],[-2326,-1234],[-3231,-1282],[-2652,-1281],[-4383,-1051],[-4988,-797],[-5030,-1035],[-5335,-723],[-5890,-468],[-6123,-16],[-5700,0],[-5823,472],[-5014,947],[-4151,1031],[-3407,1082],[-3267,1086],[-3324,968],[-3202,961],[-2390,997]],"expert":[[1948,1186],[4392,1002],[4501,1143],[5462,844],[6136,438],[6204,109],[5690,0],[6230,-82],[6141,-298],[5788,-637],[5246,-757],[4721,-884],[4130,-1116],[3899,-1001],[3201,-1101],[1539,-1316],[326,-1326],[-185,-1285],[-532,-1147],[-656,-1102],[-970,-1106],[-1568,-1212],[-2326,-1234],[-3333,-1347],[-2652,-1281],[-3656,-1297],[-4424,-1032],[-5044,-764],[-5030,-1035],[-5335,-723],[-5890,-468],[-6123,-16],[-5700,0],[-5823,472],[-4999,708],[-3955,1057],[-3421,1234],[-3331,1271],[-3179,1259],[-3255,1256],[-2357,1158]]},
-  "Sunset Bay": {"normal":[[-206,-1567],[-630,-2886],[-1299,-4781],[-1706,-4936],[-2181,-4807],[-1825,-4653],[-2682,-4032],[-2746,-2788],[-2764,135],[-2973,1903],[-2319,2851],[-2028,4263],[-1923,3867],[-294,4679],[1004,5109],[2527,4464],[3409,4298],[3300,3850],[3587,3875],[3464,3421],[2161,2766],[386,2444],[-37,1513]],"hard":[[-206,-1567],[-630,-2886],[-1299,-4781],[-1706,-4936],[-2181,-4807],[-1825,-4653],[-2682,-4032],[-2746,-2788],[-2764,135],[-3066,1901],[-2319,2851],[-2028,4263],[-1923,3867],[-358,5068],[1161,4623],[2459,4989],[3409,4298],[3300,3850],[3587,3875],[3464,3421],[2161,2766],[386,2444],[-37,1513]],"expert":[[-206,-1567],[-630,-2886],[-1299,-4781],[-1706,-4936],[-2181,-4807],[-1825,-4653],[-2682,-4032],[-2995,-2721],[-2581,57],[-3153,1767],[-2319,2851],[-2028,4263],[-1923,3867],[-411,4885],[1027,4447],[2459,4989],[3409,4298],[3300,3850],[3587,3875],[3464,3421],[2161,2766],[386,2444],[-37,1513]]},
-  "Marine Fortress": {"normal":[[-4202,-2327],[-4204,-2326],[-4227,-2300],[-4325,-3575],[-4217,-2333],[-3570,-3883],[-3465,-4002],[-3115,-4135],[-3956,-4112],[-3320,-4287],[-3149,-4054],[-2361,-3866],[-848,-1525],[-1301,-1945],[-149,-1571],[1263,-1462],[2234,-1397],[3487,-827],[3562,-805],[3562,-805],[3483,-894],[3667,-551],[2328,582],[1688,663],[1501,828],[984,3099],[916,4923],[684,5511],[275,5955],[-155,6315],[-735,6704],[-676,6832],[-1525,6974],[-2065,6953],[-2278,6908],[-2476,6786],[-2786,6838],[-2922,6609],[-3159,6162],[-3169,2319],[-3349,1724]],"hard":[[-4202,-2327],[-4204,-2326],[-4227,-2300],[-4325,-3575],[-4217,-2333],[-3570,-3883],[-3465,-4002],[-3115,-4135],[-3956,-4112],[-3320,-4287],[-3149,-4054],[-2361,-3866],[-918,-1431],[-1341,-1913],[-149,-1571],[1263,-1462],[2234,-1397],[3487,-827],[3562,-805],[3562,-805],[3483,-894],[3667,-551],[2308,515],[1599,604],[1299,841],[984,3099],[916,4923],[684,5511],[275,5955],[-155,6315],[-735,6704],[-676,6832],[-1525,6974],[-2065,6953],[-2278,6908],[-2476,6786],[-2786,6838],[-2922,6609],[-3159,6162],[-3169,2319],[-3349,1724]],"expert":[[-4202,-2327],[-4204,-2326],[-4227,-2300],[-4325,-3575],[-4217,-2333],[-3570,-3883],[-3465,-4002],[-3115,-4135],[-3956,-4112],[-3320,-4287],[-3149,-4054],[-2361,-3866],[-1112,-1339],[-1388,-1882],[-311,-1424],[1263,-1462],[2234,-1397],[3487,-827],[3562,-805],[3562,-805],[3483,-894],[3667,-551],[2104,218],[1558,376],[1415,501],[984,3099],[916,4923],[684,5511],[275,5955],[-155,6315],[-735,6704],[-676,6832],[-1525,6974],[-2065,6953],[-2278,6908],[-2476,6786],[-2786,6838],[-2922,6609],[-3159,6162],[-3169,2319],[-3349,1724]]},
-  "Drake Lake": {"normal":[[4130,-1573],[4439,-3103],[3487,-3526],[2181,-3336],[1511,-2692],[436,-3938],[-201,-3940],[1413,-2628],[190,-2386],[-84,-2375],[-1035,-2701],[-715,-3881],[-1462,-3687],[-1736,-3362],[-2004,-3341],[-2347,-3338],[-2960,-3605],[-3091,-3781],[-3758,-3560],[-3486,-3343],[-4117,-2859],[-4078,-2058],[-4265,-637],[-4089,859],[-4320,2304],[-3715,3479],[-3359,3532],[-2369,5216],[57,5333],[433,5207],[983,5099],[1532,4939],[2147,4518],[2657,4268],[3021,4019],[3704,3648],[3964,3153],[3450,3450],[4245,2501]],"hard":[[4168,-1451],[4474,-3073],[3546,-3874],[3376,-3555],[2167,-3376],[2113,-3333],[1511,-2692],[436,-3938],[-201,-3940],[1413,-2628],[190,-2386],[-84,-2375],[-904,-2660],[-715,-3881],[-1462,-3687],[-1736,-3350],[-2004,-3341],[-2347,-3338],[-2960,-3605],[-3091,-3781],[-3486,-3343],[-4035,-2840],[-4119,-1551],[-4502,-516],[-4120,361],[-4445,1402],[-3482,3889],[-3359,3532],[-419,5456],[111,5175],[371,4885],[804,4706],[839,4677],[1191,4462],[1164,4335],[3024,4528],[3598,4057],[3450,3450],[3858,3437],[4129,2689]],"expert":[[4189,-1120],[4467,-2815],[4468,-3171],[3754,-3712],[3238,-3678],[2167,-3376],[1504,-2762],[452,-3732],[-201,-3940],[1429,-2727],[-58,-2396],[-84,-2375],[-713,-3788],[-1751,-3380],[-2347,-3338],[-3091,-3634],[-3758,-3560],[-4117,-2859],[-4130,-1882],[-4259,-1472],[-4453,-811],[-4477,-535],[-4157,191],[-4174,434],[-4411,1175],[-4421,1427],[-3743,3402],[-2457,4969],[-1742,5047],[-1498,5247],[-1486,5249],[-988,4876],[-646,4929],[-412,4731],[31,4660],[240,4644],[782,4692],[924,4685],[1043,4678],[1742,4802],[2155,4708],[2913,4367],[4086,3336],[4278,2549]]},
-  "Port Blue": {"normal":[[-4396,-3838],[-3916,-4420],[-3519,-4717],[-2015,-4828],[-1292,-5169],[-634,-4981],[2134,-4992],[2669,-4888],[3000,-4607],[3259,-4309],[3478,-3935],[3703,-3493],[4047,-2800],[4089,-2220],[4039,-1746],[3935,-1261],[3756,-860],[3578,-358],[3444,153],[3048,527],[2422,752],[1947,685],[-141,417],[-628,422],[-1204,613],[-1673,1252],[-1872,4046],[-2181,4947],[-2496,5464],[-2596,5691],[-2926,5983],[-3618,5471],[-4252,4057]],"hard":[[-4396,-3838],[-3916,-4420],[-3519,-4717],[-2392,-4580],[-1468,-4339],[-1239,-4210],[-940,-4126],[-768,-3911],[-263,-3916],[-131,-4129],[264,-3793],[182,-3477],[446,-3330],[309,-3326],[195,-3115],[410,-2966],[247,-2847],[-99,-2183],[-36,-1775],[-139,-1521],[511,-1318],[869,-1244],[758,-989],[965,-423],[884,-140],[584,118],[88,503],[-474,648],[-1789,4124],[-2088,4975],[-2361,5584],[-3618,5471],[-4801,4031]],"expert":[[-4396,-3838],[-3916,-4420],[-3519,-4717],[-2392,-4580],[-1468,-4339],[-1239,-4210],[-940,-4126],[-768,-3911],[-263,-3916],[-131,-4129],[264,-3793],[182,-3477],[446,-3330],[309,-3326],[195,-3115],[410,-2966],[247,-2847],[-99,-2183],[-36,-1775],[-139,-1521],[511,-1318],[869,-1244],[758,-989],[965,-423],[884,-140],[584,118],[88,503],[-474,648],[-1789,4124],[-2088,4975],[-2361,5584],[-3618,5471],[-4801,4031]]},
-  "Twilight City": {"hard":[[-75,-2771],[-11,401],[-1,3921],[402,4615],[1008,4937],[2202,3537],[2377,3123],[2363,2702],[2301,2618],[2287,1664],[2280,1162],[1793,-292],[3764,-2143],[4380,-3770],[6008,-4497],[7064,-6078],[6960,-6949],[6511,-7736],[5549,-8003],[3348,-8000],[659,-7906],[-126,-7428]],"expert":[[-75,-2771],[-26,444],[-1,3921],[402,4615],[1008,4937],[2202,3537],[2027,2580],[2326,1652],[2217,1297],[1901,73],[1732,-171],[2492,-1194],[3570,-2134],[4380,-3770],[6008,-4497],[7064,-6078],[6960,-6839],[6968,-7099],[6528,-7390],[6018,-7806],[3654,-7829],[2722,-7898],[827,-7914],[23,-7314],[-162,-6759]]},
-  "Glacier Coast": {"normal":[[4196,-1058],[4109,-2496],[3912,-3520],[3657,-4486],[3038,-5442],[2883,-5703],[2695,-5838],[2428,-5858],[1570,-5579],[277,-4893],[-957,-4158],[-2000,-3853],[-2289,-3625],[-3026,-2736],[-2808,-917],[-2748,-380],[-2791,-835],[-2508,1491],[-2104,3582],[-1160,5323],[-239,5890],[751,5948],[1697,5727],[2486,5424],[3075,4719],[3699,3936],[3898,3457],[3973,2962],[3989,2342],[4118,1400]],"hard":[[4196,-1058],[4109,-2496],[3912,-3520],[3595,-4446],[3079,-5404],[2871,-5747],[2592,-5864],[2175,-5817],[1288,-5533],[277,-4893],[-336,-4722],[-1467,-3485],[-1851,-3282],[-3640,-2793],[-3416,-2937],[-3802,-2547],[-3216,-551],[-3165,-333],[-3093,-114],[-2928,1051],[-2785,1514],[-2104,3582],[-1160,5323],[-351,5864],[612,5918],[1701,5760],[2562,5380],[3125,4801],[3566,3911],[3870,3488],[3948,3010],[3977,2300],[3980,1507]],"expert":[[4196,-1058],[4109,-2496],[3912,-3520],[3634,-4475],[3242,-5545],[3015,-5882],[2628,-6116],[2127,-6083],[1582,-5872],[277,-4893],[-342,-4195],[-2117,-3977],[-2474,-3696],[-3174,-2372],[-2808,-917],[-2748,-380],[-2791,-835],[-2287,824],[-2197,1324],[-2540,2040],[-2076,3559],[-1160,5323],[-236,5887],[682,5855],[1714,5678],[2558,5312],[3146,4692],[3753,3924],[4216,3014],[4159,1391]]},
-  "Southern Island": {"normal":[[-4229,1482],[-4603,76],[-4617,-1386],[-4295,-2701],[-3831,-3526],[-3481,-4010],[-3350,-3850],[-2790,-4285],[-313,-4221],[-61,-4523],[388,-4586],[1139,-5015],[1197,-5068],[1091,-4857],[2183,-4599],[2581,-4311],[2931,-4160],[2998,-3927],[3215,-3850],[3323,-3665],[3025,-3525],[3098,-2474],[2373,-1537],[1433,-827],[834,550],[486,1667],[683,2655],[931,3078],[1533,3405],[1426,3707],[918,3919],[1593,4012],[1366,4314],[1004,4925],[-131,5350],[-1017,6277],[-916,6380],[-2449,6352],[-2100,6000],[-3112,5571],[-3626,4357]],"hard":[[-4229,1482],[-4603,76],[-4617,-1386],[-4295,-2701],[-3831,-3526],[-3481,-4010],[-3350,-3850],[-2790,-4285],[-313,-4221],[-61,-4523],[388,-4586],[1139,-5015],[1197,-5068],[1091,-4857],[2183,-4599],[2581,-4311],[2931,-4160],[2998,-3927],[3215,-3850],[3323,-3665],[3025,-3525],[3098,-2474],[2373,-1537],[1433,-827],[834,550],[486,1667],[683,2655],[931,3078],[1533,3405],[1426,3707],[918,3919],[1593,4012],[1366,4314],[1004,4925],[-131,5350],[-1017,6277],[-916,6380],[-2449,6352],[-2100,6000],[-3112,5571],[-3626,4357]],"expert":[[-4229,1482],[-4603,76],[-4617,-1386],[-4295,-2701],[-3831,-3526],[-3481,-4010],[-3350,-3850],[-2790,-4285],[-313,-4221],[-61,-4523],[388,-4586],[1139,-5015],[1197,-5068],[1091,-4857],[2183,-4599],[2581,-4311],[2931,-4160],[2998,-3927],[3215,-3850],[3323,-3665],[3025,-3525],[3098,-2474],[2373,-1537],[1433,-827],[834,550],[486,1667],[683,2655],[931,3078],[1533,3405],[1426,3707],[918,3919],[1593,4012],[1366,4314],[1004,4925],[-131,5350],[-1017,6277],[-916,6380],[-2449,6352],[-2100,6000],[-3112,5571],[-3626,4357]]}
-};
-TT_COURSES.forEach(c => Object.assign(c, TT_WATER[c.name], { lines: TT_LINES[c.name] }));
+// ramps and big structures (the course's class-1 objects: x, z, variant, angle) and the oriented boxes each one is
+// made of (func_800744EC picks the set): corner x y z, three unit axes, the extents back along them, soft "ramp" flag
+const TT_RAMP_BOXES = {"default":[[-750.0,2.0,1.0,0.0,0.949,0.316,0.0,0.316,-0.949,-1.0,0.0,0.0,234.009,316.228,1500.0,1],[-750.0,-127.0,-737.0,0.0,0.59,-0.808,0.0,-0.81,-0.587,-1.0,0.0,0.0,261.222,274.235,1500.0,1],[-750.0,93.0,-575.0,0.0,-0.143,-0.99,0.0,0.99,-0.14,-1.0,0.0,0.0,69.721,250.458,1500.0,1],[750.0,105.0,-507.0,0.0,0.491,-0.871,0.0,0.872,0.489,1.0,0.0,0.0,189.404,247.582,1500.0,1],[750.0,0.0,-189.0,0.0,0.971,0.241,0.0,-0.244,0.97,1.0,0.0,0.0,241.081,245.447,1500.0,1],[-750.0,30.0,-307.0,0.0,0.995,0.097,0.0,0.097,-0.995,-1.0,0.0,0.0,237.118,308.462,1500.0,1]],"pbN":[[-250.0,-24.0,-645.0,0.0,-0.809,-0.588,0.0,0.591,-0.807,-1.0,0.0,0.0,117.414,120.208,500.0,1],[-250.0,71.0,-576.0,0.0,-0.143,-0.99,0.0,0.99,-0.141,-1.0,0.0,0.0,69.721,120.208,500.0,1],[-250.0,-23.0,-567.0,0.0,-0.872,-0.49,0.0,0.486,-0.874,-1.0,0.0,0.0,120.441,121.314,500.0,1],[-250.0,-75.0,-479.0,0.0,-0.971,-0.241,0.0,0.238,-0.971,-1.0,0.0,0.0,120.54,167.836,500.0,1],[-250.0,-182.0,386.0,0.0,-0.995,-0.1,-1.0,0.0,0.0,0.0,-0.097,0.995,119.604,500.0,759.613,1]],"pbH":[[-500.0,-24.0,-645.0,0.0,-0.809,-0.588,0.0,0.591,-0.807,-1.0,0.0,0.0,117.414,120.208,1000.0,1],[-500.0,71.0,-576.0,0.0,-0.143,-0.99,0.0,0.99,-0.141,-1.0,0.0,0.0,69.721,120.208,1000.0,1],[-500.0,-23.0,-567.0,0.0,-0.872,-0.49,0.0,0.486,-0.874,-1.0,0.0,0.0,120.441,121.314,1000.0,1],[-500.0,-75.0,-479.0,0.0,-0.971,-0.241,0.0,0.238,-0.971,-1.0,0.0,0.0,120.54,167.836,1000.0,1],[-500.0,-182.0,386.0,0.0,-0.995,-0.1,0.0,-0.097,0.995,-1.0,0.0,0.0,119.604,759.613,1000.0,1]],"pbE":[[-750.0,-24.0,-645.0,0.0,-0.809,-0.588,0.0,0.591,-0.807,-1.0,0.0,0.0,117.414,120.208,1500.0,1],[-750.0,81.0,-507.0,0.0,0.143,0.99,0.0,0.989,-0.15,-1.0,0.0,0.0,69.721,120.354,1500.0,1],[750.0,-82.0,-461.0,0.0,-0.87,-0.493,0.0,-0.486,0.874,1.0,0.0,0.0,119.57,121.314,1500.0,1],[-750.0,-75.0,-479.0,0.0,-0.971,-0.241,0.0,0.238,-0.971,-1.0,0.0,0.0,120.54,167.836,1500.0,1],[750.0,-63.0,398.0,0.0,0.995,0.1,0.0,-0.097,0.995,1.0,0.0,0.0,119.604,759.613,1500.0,1]],"tcA":[[100.0,150.0,-305.0,1.0,0.0,0.0,0.0,0.941,0.339,0.0,0.336,-0.942,200.0,266.0,743.0,1]],"tcB":[[200.0,-350.0,305.0,0.0,-0.941,-0.339,1.0,0.0,0.0,0.0,-0.336,0.942,266.0,400.0,743.0,1]],"gc":[[150.0,-50.0,115.0,0.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,200.0,300.0,474.0,1],[-150.0,100.0,-305.0,0.0,0.941,0.339,-1.0,0.0,0.0,0.0,0.336,-0.942,159.0,300.0,446.0,1],[150.0,-50.0,115.0,0.0,1.0,0.0,0.707,0.0,0.707,0.707,0.0,-0.707,200.0,212.0,212.0,1]]};
+const TT_RAMPS = {"Sunny Beach":[],"Sunset Bay":[[-2796,-1652,0,360]],"Marine Fortress":[],"Drake Lake":[],"Port Blue":[[-900,4550,0,0],[-1250,4950,0,0],[-2100,5350,0,0]],"Twilight City":[[2350,2405,0,180],[5105,-7950,1,270],[2205,-7950,1,270],[-50,-2455,2,0],[-50,-1605,3,0]],"Glacier Coast":[[-641,3733,0,45]],"Southern Island":[]};
+TT_COURSES.forEach(c => Object.assign(c, TT_WATER[c.name], { ramps: TT_RAMPS[c.name] }));
 const TT_DIFFS = [['normal', 'Normal'], ['hard', 'Hard'], ['expert', 'Expert']];
 // the four riders' machines (WR64 rider slots 0-3); named after how each one handles, from the tables in WR.T
 const TT_RIDERS = [
@@ -3855,8 +3898,74 @@ function ttGatesMesh(route, ox, oz){
 const ttBufs = { red: makeGeoBuffer(false), yellow: makeGeoBuffer(false), small: makeGeoBuffer(false), arrow: makeGeoBuffer(false), gates: makeGeoBuffer(false) };
 ttBufs.red.set(ttBuoyMesh(TT_COL.red, 1)); ttBufs.yellow.set(ttBuoyMesh(TT_COL.yellow, 1)); ttBufs.small.set(ttBuoyMesh(TT_COL.grey, 0.6));
 ttBufs.arrow.set(ttArrowMesh());
+ttBufs.boxes = makeGeoBuffer(false);
 ttBufs.pink = makeGeoBuffer(false); ttBufs.pink.set(ttBuoyMesh(TT_COL.pink, 0.5));
 
+// ---- ramps: each object's box set, turned by (angle + 180 deg) and moved into place (func_801EE6F4, func_801EDC60).
+// Variant 2 is left out on Hard, variant 3 on Expert (func_80071E70). WR64 units. ----
+function ttRampBoxes(course, dI){
+  const out = [];
+  for (const [x, z, v, ang] of course.ramps){
+    if ((v === 2 && dI === 1) || (v === 3 && dI === 2)) continue;
+    let set, y = 0;
+    if (course.id === 'port') set = TT_RAMP_BOXES[['pbN','pbH','pbE'][dI]];
+    else if (course.id === 'twilight') set = TT_RAMP_BOXES[(v === 0 || (v === 1 && dI === 2)) ? 'tcA' : 'tcB'];
+    else if (course.id === 'glacier') set = TT_RAMP_BOXES.gc;
+    else { set = TT_RAMP_BOXES.default; y = -24; }
+    const b = Math.trunc((ang + 180)/360*4096), sb = wrSin(b), cb = wrSin(b + 0x400);
+    const rot = v3 => [v3[0]*cb + v3[2]*sb, v3[1], -v3[0]*sb + v3[2]*cb];
+    for (const q of set){
+      const o = rot(q.slice(0, 3));
+      out.push({ o: [o[0] + x, o[1] + y, o[2] + z], a: [rot(q.slice(3, 6)), rot(q.slice(6, 9)), rot(q.slice(9, 12))], e: q.slice(12, 15), ramp: q[15] });
+    }
+  }
+  return out;
+}
+// func_8007F700: each hull particle inside a box is pushed out through the nearest face, its speed into that face
+// removed (only 40 % of it counted as the hit on ramps), and the whole hull moved out. Particles 1, 8 and 11 (the
+// raised centre line) ignore faces that push down.
+function ttBoxesCollide(S){
+  const P = S.P, V = S.V;
+  for (let bi = TT.boxes.length - 1; bi >= 0; bi--){
+    const B = TT.boxes[bi], [a1, a2, a3] = B.a, [e1, e2, e3] = B.e;
+    for (let i = 11; i >= 0; i--){
+      let x = B.o[0] - P[i*3], y = B.o[1] - P[i*3+1], z = B.o[2] - P[i*3+2];
+      let s = a1[0]*x + a1[1]*y + a1[2]*z; if (s < 0 || e1 <= s) continue;
+      const t = a2[0]*x + a2[1]*y + a2[2]*z; if (t < 0 || e2 <= t) continue;
+      const u = a3[0]*x + a3[1]*y + a3[2]*z; if (u < 0 || e3 <= u) continue;
+      let n;
+      if (s > e1 - s){ s = e1 - s; n = [-a1[0], -a1[1], -a1[2]]; } else n = a1.slice();
+      if (t < s){ s = t; n = a2.slice(); }
+      if (s > e2 - t){ s = e2 - t; n = [-a2[0], -a2[1], -a2[2]]; }
+      if (u < s){ s = u; n = a3.slice(); }
+      if (e3 - u < s){ s = e3 - u; n = [-a3[0], -a3[1], -a3[2]]; }
+      if (n[1] <= 0 && (i === 1 || i === 8 || i === 11)) continue;
+      const vn = -n[0]*V[i*3] - n[1]*V[i*3+1] - n[2]*V[i*3+2];
+      S.rampHit = Math.max(S.rampHit || 0, B.ramp ? 0.4*vn : vn);
+      V[i*3] += vn*n[0]; V[i*3+1] += vn*n[1]; V[i*3+2] += vn*n[2];
+      for (let k=0;k<12;k++){ P[k*3] += n[0]*s; P[k*3+1] += n[1]*s; P[k*3+2] += n[2]*s; }
+    }
+  }
+}
+// the boxes as solid blocks: ramp faces in race yellow with red-and-white edges, the rest in grey concrete
+function ttBoxesMesh(boxes, ox, oz){
+  const m = MeshB(), U = WR.U;
+  const yel = lin(0.98,0.80,0.10,0.5), red = lin(0.85,0.12,0.08,0.5), wht = lin(0.92,0.92,0.9,0.5), gry = lin(0.55,0.55,0.53,0.3);
+  for (const B of boxes){
+    const [a1, a2, a3] = B.a, [e1, e2, e3] = B.e;
+    const C = (i, j, k) => [0,1,2].map(d => B.o[d] - a1[d]*e1*i - a2[d]*e2*j - a3[d]*e3*k);
+    const W = p => [ox + p[0]/U, p[1]/U, oz + p[2]/U];
+    const faces = [[[0,0,0],[0,1,0],[0,1,1],[0,0,1]], [[1,0,0],[1,0,1],[1,1,1],[1,1,0]], [[0,0,0],[0,0,1],[1,0,1],[1,0,0]],
+                   [[0,1,0],[1,1,0],[1,1,1],[0,1,1]], [[0,0,0],[1,0,0],[1,1,0],[0,1,0]], [[0,0,1],[0,1,1],[1,1,1],[1,0,1]]];
+    const cen = W(C(0.5, 0.5, 0.5));
+    faces.forEach((f, fi) => {
+      const col = !B.ramp ? gry : fi < 2 ? yel : (fi % 2 ? red : wht);
+      const base = m.p.length/3; for (const c of f) mbVert(m, W(C(...c)), col);
+      const st = m.i.length; m.i.push(base, base+1, base+2, base, base+2, base+3); orient(m, st, () => cen);
+    });
+  }
+  return mbFinish(m);
+}
 // ---- water, obstacles and the craft <-> renderer glue ----
 const _ttw = new Float64Array(7);
 function ttWater(x, z, out){                     // WR64 units in, units out: surface height (+ wake), slope
@@ -3864,10 +3973,12 @@ function ttWater(x, z, out){                     // WR64 units in, units out: su
   waterSurface(ocean, X, Z, _ttw);
   out[0] = (_ttw[0] - wakeHeight(X, Z) + _ttw[1]*TT.tOff)*WR.U; out[1] = _ttw[4]; out[2] = _ttw[5];
 }
-// func_8007E8C8 / func_8007DF4C / func_8007ED2C: two probe points on the hull (27 ahead, 9 behind the centre, 2 up)
-// against the buoys (radius 62, the buoy yields 70 %), their anchors (62), the invisible route markers and racing-line
-// points (62), the start gate's pylons (92) and the pink marker buoys (37)
+// func_8007E8C8 / func_8007DF4C: two probe points on the hull (27 ahead, 9 behind the centre, 2 up) against the
+// visible buoys (radius 62, the buoy yields 70 %) and the gates' pylons (92 for the start/finish, 62 for the others).
+// Route markers and the CPU riders' line points are not obstacles (the game skips entries with no buoy). Each probe
+// takes its first hit only. func_8007ED2C: the same probes against the pink marker buoys (radius 37).
 function ttProbes(S){
+  ttBoxesCollide(S);
   const c = S.cen, u = S.up, f = S.fwd, V = S.V;
   const probes = [[27, [4,5,3]], [-9, [11,10,9]]];
   for (const [o, pts] of probes){
@@ -3877,24 +3988,21 @@ function ttProbes(S){
       const dx = px - m[0], dy = py, dz = pz - m[1], d2 = dx*dx + dy*dy + dz*dz;
       if (d2 < 1369){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, 37 - d); }
     }
-    for (const q of TT.posts){                   // markers and racing-line points: invisible, fixed
-      const dx = px - q[0], dy = py, dz = pz - q[1], d2 = dx*dx + dy*dy + dz*dz;
-      if (d2 < 3844){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, 62 - d); }
-    }
-    for (const b of TT.R.route.list){
-      if (b.k === 3){
-        for (const [ex, ez] of [[b.e1x, b.e1z], [b.e2x, b.e2z]]){
-          const dx = px - ex, dy = py, dz = pz - ez, d2 = dx*dx + dy*dy + dz*dz;
-          if (d2 < 8464){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, 92 - d); }
-        }
-      }
-      if (b.buoy){
-        let dx = px - b.x, dy = py - b.y, dz = pz - b.z, d2 = dx*dx + dy*dy + dz*dz;
+    const L = TT.R.route.list;
+    hit: for (let i = L.length - 1; i >= 0; i--){
+      const b = L[i];
+      if (!b.gate){
+        if (!b.buoy) continue;
+        let dx = px - b.x, dy = py - b.y, dz = pz - b.z; const d2 = dx*dx + dy*dy + dz*dz;
         if (d2 < 3844){ const d = Math.sqrt(d2) || 1, pen = 62 - d; dx /= d; dy /= d; dz /= d;
           const kb = pen*0.3, kk = pen - kb;
-          b.x -= kk*dx; b.y -= kk*dy; b.z -= kk*dz; b.vx -= kk*dx; b.vy -= kk*dy; b.vz -= kk*dz; push(dx, dy, dz, kb); }
-        dx = px - b.ax; dy = py; dz = pz - b.az; d2 = dx*dx + dy*dy + dz*dz;
-        if (d2 < 3844){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, 62 - d); }
+          b.x -= kk*dx; b.y -= kk*dy; b.z -= kk*dz; b.vx -= kk*dx; b.vy -= kk*dy; b.vz -= kk*dz; push(dx, dy, dz, kb); break hit; }
+        continue;
+      }
+      const r = b.k === 3 ? 92 : 62;
+      for (const [ex, ez] of [[b.e1x, b.e1z], [b.e2x, b.e2z]]){
+        const dx = px - ex, dy = py, dz = pz - ez, d2 = dx*dx + dy*dy + dz*dz;
+        if (d2 < r*r){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, r - d); break hit; }
       }
     }
   }
@@ -4005,6 +4113,7 @@ function ttStart(){
   if (course.id === 'sunset') applyScene(2); else if (course.id === 'twilight') applyScene(1);
   ttRestart();
   ttBufs.gates.set(ttGatesMesh(TT.R.route, TT.ox, TT.oz));
+  ttBufs.boxes.set(ttBoxesMesh(TT.boxes, TT.ox, TT.oz));
   document.body.classList.add('ttmode'); $tt.hidden = false;
 }
 function ttRestart(){
@@ -4014,13 +4123,13 @@ function ttRestart(){
   // the grid: 512 units behind the start/finish line on its heading (func_8006AC84, one rider)
   const g = TT.R.route.list[TT.R.route.fin], a = g.a*Math.PI/180;
   wrPlace(TT.S, g.x - g.hx*512, g.z - g.hz*512, a);
-  TT.acc = 0; TT.k = 0; TT.simT = tSim; TT.phase = 'countdown'; TT.cd = 0; TT.outT = 0; TT.frame = 0; TT.slide = 0;
+  TT.acc = 0; TT.k = 0; TT.simT = tSim; TT.phase = 'countdown'; TT.cd = 0; TT.outT = 0; TT.frame = 0; TT.slide = 0; TT.tricks0 = 0;
   TT.best = ttLoadBest(); TT.split = null;
   // the water: a fresh field at the course's wave level (func_8004F9E0 at race start)
   const dI = ['normal','hard','expert'].indexOf(diff);
   wrwInit(course.wave, course.swells, course.radius, mulberry((Math.random()*2**31)|0));
   Object.assign(WRW, { on: true, ox: TT.ox, oz: TT.oz });
-  TT.posts = [...TT.R.route.list.filter(b => !b.gate && !b.buoy).map(b => [b.x, b.z]), ...(course.lines[diff] || [])];
+  TT.boxes = ttRampBoxes(course, dI);
   TT.marks = [...course.marks.filter(m => m[2] !== 2 || dI > 0).filter(m => m[2] !== 3 || dI > 1), ...course.pink.map(p => [p[0], p[1], 1])];
   $ttRes.hidden = true; slam.pending = 0; slam.air = 0; ski.airT = 0; ski.lastAir = 0;
   ttSync(1); cam.init = false; jetPrev = null; footPrev = null;
@@ -4098,8 +4207,10 @@ function ttFrameEnd(){
   TT.frame++;
   if (TT.phase === 'countdown'){                   // 3, 2, 1, GO at one per second
     const f = TT.cd++;
-    if (f % 20 === 0 && f < 60){ ttBig(`<b>${3 - f/20}</b>`, 0.9, 'cd'); TT_SND.beep(); }
-    if (f === 60){ TT.phase = 'race'; ttBig('<b>GO!</b>', 1.0, 'cd go'); TT_SND.go(); }
+    // start lights: a red one comes on each second, then all turn green
+    const lights = (n, g) => `<div id="ttLights">${[0,1,2].map(i => `<i class="${g ? 'g' : i < n ? 'r' : ''}"></i>`).join('')}</div>`;
+    if (f % 20 === 0 && f < 60){ ttBig(lights(f/20 + 1, false), 1.2); TT_SND.beep(); }
+    if (f === 60){ TT.phase = 'race'; ttBig(lights(3, true), 1.0); TT_SND.go(); }
   }
   const racing = TT.phase === 'race';
   R.events.length = 0;
@@ -4111,6 +4222,7 @@ function ttFrameEnd(){
     else if (!TT.outT) TT.outT = 219 + 20;
     else { TT.outT--; if (TT.outT % 20 === 0) TT_SND.out(); if (TT.outT === 0){ R.retired = 'out'; R.events.push({ e: 'dq', out: true }); } }
   } else TT.outT = 0;
+  if (S.tricks !== TT.tricks0){ TT.tricks0 = S.tricks; $air.textContent = ['', 'BARREL ROLL', 'BARREL ROLL', 'DIVE', 'FLIP'][S.trick] || ''; $air.classList.add('on'); airShown = 1.2; }
   TT.upside = S.up[1] < 0.1 ? (TT.upside || 0) + 1 : 0;
   if (TT.upside > 30){ TT.upside = 0; wrPlace(S, S.cen[0], S.cen[2], Math.atan2(S.fwd[0], S.fwd[2])); }
   // the game's water frame: source ahead of the camera, swell trains, the solver
@@ -4220,6 +4332,8 @@ function ttDraw(t){
     const X = TT.ox + m[0]/U, Z = TT.oz + m[1]/U; waterSurface(ocean, X, Z, w);
     drawAt(ttBufs.pink, X, w[0] + 0.3, Z, w[4]*0.8, w[5]*0.8, 0);
   }
+  if (ttBufs.boxes.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
+    gl.bindVertexArray(ttBufs.boxes.vao); gl.drawElements(gl.TRIANGLES, ttBufs.boxes.n, gl.UNSIGNED_INT, 0); }
   if (ttBufs.gates.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
     gl.bindVertexArray(ttBufs.gates.vao); gl.drawElements(gl.TRIANGLES, ttBufs.gates.n, gl.UNSIGNED_INT, 0); }
   // arrow over the next counted buoy (the game flashes one there, func_8006B334), pointing at the side to pass
@@ -4824,6 +4938,9 @@ function frame(now){
   const pose = CRAFT.id === 'sit'
     ? { steer: ski.steer, lean: ski.steer*(0.12 + 0.28*spdF) + ski.stand*0.1*ski.steer, stand: ski.stand, crouch: Math.min(1, crouch), fwd: clamp(ski.thr*spdF, 0, 1)*0.7 }
     : { steer: ski.steer, lean: ski.capsized ? 0 : ski.steer*(0.14 + 0.36*spdF)*(1 + 0.35*ski.stand), attack: ski.stand, crouch: Math.min(1, crouch) };
+  if (TT.on){ const S = TT.S;                    // Time Trial: the game's rider balance (func_8005DE24's filters)
+    pose.steer = S.B5E/70; pose.lean = Math.asin(clamp(20*S.bal/Math.max(S.C0C, 10), -0.8, 0.8));
+    pose.crouch = clamp(Math.max(crouch, 1 - S.C0C/34.11)*1.5, 0, 1); pose.attack = clamp((S.C10 + 27.3)/12, 0, 1); }
   const rider = buildRider(pose, camMode === 1);
   riderBuf.set(rider.geo);
   const tc3 = performance.now();

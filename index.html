@@ -90,7 +90,12 @@
     box-shadow:0 0 0 1.5px rgba(255,255,255,.55); }
   #touch .l::after { content:"STICK"; position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:10px; font-weight:700; letter-spacing:.08em; opacity:.5; }
   #touch .s { display:none; right:134px; bottom:calc(183px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; }
-  body.touch #hud { transform:scale(.72); transform-origin:100% 100%; } body.touch.ttmode #tt { transform:scale(.85); transform-origin:0 0; }
+  body.touch #hud { transform:scale(.72); transform-origin:100% 0; top:calc(10px + env(safe-area-inset-top,0px)); bottom:auto; right:calc(10px + env(safe-area-inset-right,0px)); }
+  body.touch #mbtns { top:calc(112px + env(safe-area-inset-top,0px)); flex-direction:column; align-items:flex-end; }
+  body.touch.ttmode #tt { transform:scale(.85); transform-origin:0 0; }
+  body.touch #mode { display:none; }
+  body.touch #ttCue { bottom:auto; top:calc(34% + env(safe-area-inset-top,0px)); }
+  body.touch #ttDir { top:calc(30% + env(safe-area-inset-top,0px)); }
   body.ttmode #bSea { display:none !important; }
   body.ttmode #touch .s { display:block; } #touch .pad.hold { background:rgba(90,215,242,.3); }
   #touch .s::after { content:"SLIDE"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; opacity:.7; }
@@ -134,7 +139,12 @@
   #ttPass { top:43%; font-size:22px; } #ttPass.good { color:#8dff6a; } #ttPass.bad { color:#ff6a55; }
   #ttSplit { top:31%; font-size:24px; } #ttSplit.fast { color:#6ad8ff; } #ttSplit.slow { color:#ff9a55; }
   #ttOut { top:50%; font-size:26px; color:#ff6a55; } #ttOut b { font-size:40px; margin-left:8px; }
-  #ttCue { bottom:calc(20px + env(safe-area-inset-bottom,0px)); font-size:13px; font-weight:600; letter-spacing:.02em; padding:6px 12px; border-radius:999px; background:rgba(10,30,30,.35); }
+  #ttCue { bottom:calc(64px + env(safe-area-inset-bottom,0px)); font-size:13px; font-weight:600; letter-spacing:.02em; padding:6px 12px; border-radius:999px; background:rgba(10,30,30,.35); }
+  #ttDir { position:fixed; left:50%; top:calc(12% + env(safe-area-inset-top,0px)); transform:translateX(-50%); z-index:6; pointer-events:none; opacity:0; transition:opacity .25s;
+    text-align:center; font-weight:700; letter-spacing:.04em; text-shadow:0 2px 12px rgba(0,30,40,.6); color:#ffd23a; }
+  #ttDir.on { opacity:1; } #ttDir span { display:block; font-size:14px; margin-top:4px; white-space:normal; width:min(320px, 64vw); }
+  #ttDir i { display:block; width:0; height:0; margin:0 auto; border-left:18px solid transparent; border-right:18px solid transparent; border-bottom:34px solid #ffd23a;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)); transform-origin:50% 60%; }
   #ttCue.red { color:#ff8a78; } #ttCue.yel { color:#ffe25a; } #ttCue.fin { color:#fff; }
   #ttPass.on, #ttSplit.on, #ttOut.on, #ttCue.on { opacity:1; }
   #ttRes { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; padding:20px 24px 18px; min-width:280px; max-width:calc(100vw - 32px); box-sizing:border-box; }
@@ -163,7 +173,7 @@
 <div id="air"></div>
 <div id="msg" class="glass"></div>
 <button id="bFlip" class="glass">↻ Flip upright</button>
-<div id="mbtns"><button id="bSea" class="glass tonly">Sea: Light chop</button><button id="bCam" class="glass tonly">Camera</button><button id="bScene" class="glass tonly">Day</button><button id="bGfx" class="glass">Graphics: High</button></div>
+<div id="mbtns"><button id="bMenu" class="glass tonly">☰ Menu</button><button id="bSea" class="glass tonly">Sea: Light chop</button><button id="bCam" class="glass tonly">Camera</button><button id="bScene" class="glass tonly">Day</button><button id="bGfx" class="glass">Graphics: High</button></div>
 <div id="touch"><div class="pad l"><i></i></div><div class="pad r"></div><div class="pad s"></div></div>
 <div id="start">
   <div id="card" class="glass">
@@ -215,6 +225,7 @@
 </div>
 <div id="tt" class="glass" hidden><div id="ttCourse"></div><div id="ttLap"></div><div id="ttTime">0'00"00</div><div id="ttLaps"></div>
   <div id="ttPow"><i></i><i></i><i></i><i></i><i></i></div><div id="ttMiss"></div><div id="ttBest"></div></div>
+<div id="ttDir"><i></i><span></span></div>
 <div id="ttBig"></div><div id="ttPass"></div><div id="ttSplit"></div><div id="ttOut"></div><div id="ttCue"></div>
 <div id="ttRes" class="glass" hidden><div id="ttResBody"></div><div class="btns"><button id="ttAgain">Race again</button><button id="ttMenu">Menu</button></div></div>
 <div id="dbg" hidden></div>
@@ -1308,14 +1319,9 @@ function ttRaceFrame(R, px, pz, ppx, ppz, racing){
   if (racing && !R.finished && !R.retired){ R.lapT += 50; R.time += 50; }
   if (R.drain > 0 && --R.drain === 0) R.power = 0;                          // the meter drains after a miss (16 frames)
   if (R.dqT > 0 && --R.dqT === 0){ R.retired = 'dq'; ev.push({ e: 'dq' }); } // then the rider is out
+  if (!R.armed && ttSkipAhead(R, px, pz, ppx, ppz)) return;
   const L = R.route.list, i0 = R.next, b = L[i0];
   const ppX = b.x - b.sx*25, ppZ = b.z - b.sz*25;                           // 25 units off the buoy, toward the wrong side: grazing it still counts
-  let inGate = true;
-  if (b.gate){                                                              // gates: within its width (+ margin, one side open)
-    let ux = b.e1x - b.e2x, uz = b.e1z - b.e2z; const ul = Math.hypot(ux, uz); if (ul > 0){ ux /= ul; uz /= ul; }
-    const along = (px - b.e2x)*ux + (pz - b.e2z)*uz;
-    inGate = R.course.startSide === 0 ? along <= b.half*2 + R.course.margin : along >= -R.course.margin;
-  }
   let dx = px - ppX, dz = pz - ppZ; const dl = Math.hypot(dx, dz); if (dl > 0){ dx /= dl; dz /= dl; }
   const ahead = b.hx*dx + b.hz*dz;
   if (R.side === -1 && ahead > 0) R.side = (b.hz*dx - b.hx*dz) >= 0 ? 1 : 0; // crossed: which side of it
@@ -1323,31 +1329,70 @@ function ttRaceFrame(R, px, pz, ppx, ppz, racing){
   if (!R.armed && R.side === -1) R.armed = true;
   if (!(R.armed && R.side >= 0)) return;
   const same = ttSameZone(R.course.zones, px, pz, b.x, b.z);
-  if ((b.gate && !inGate) || (b.counted && !same) || (R.course.id === 'fortress' && b.k === 4 && !same)){ R.armed = false; return; }
-  // a valid crossing
+  if ((b.gate && !ttInGate(R, b, px, pz)) || (b.counted && !same) || (R.course.id === 'fortress' && b.k === 4 && !same)){ R.armed = false; return; }
+  ttCross(R, i0, R.side, px, pz, ppx, ppz);
+}
+// gates: within its width (+ margin, one side open)
+function ttInGate(R, b, px, pz){
+  let ux = b.e1x - b.e2x, uz = b.e1z - b.e2z; const ul = Math.hypot(ux, uz); if (ul > 0){ ux /= ul; uz /= ul; }
+  const along = (px - b.e2x)*ux + (pz - b.e2z)*uz;
+  return R.course.startSide === 0 ? along <= b.half*2 + R.course.margin : along >= -R.course.margin;
+}
+// a crossing of route entry i0 that counts (side: 0 or 1, as above)
+function ttCross(R, i0, side, px, pz, ppx, ppz){
+  const L = R.route.list, b = L[i0], ev = R.events;
   if (!b.gate && !R.finished && !R.retired && b.k !== 8 && b.k !== 9){
-    const good = (b.k === 0 && R.side === 0) || (b.k === 1 && R.side === 1);
+    const good = (b.k === 0 && side === 0) || (b.k === 1 && side === 1);
     if (good){ if (b.counted){ if (R.drain > 0){ R.drain = 0; R.power = 1; } else if (R.power < 5) R.power++; ev.push({ e: 'pass', k: b.k, i: i0 }); } }
-    else if ((b.k === 0 || b.k === 1) && b.counted){
-      R.missLap++; R.missTot++;
-      if (R.missTot >= R.misses){ if (R.misses === 0){ R.retired = 'dq'; ev.push({ e: 'dq' }); } else if (!R.dqT) R.dqT = 17; }
-      if (R.power > 0 && !R.drain) R.drain = 16;
-      ev.push({ e: 'miss', k: b.k, i: i0, left: Math.max(R.misses - R.missTot, 0) });
-    }
+    else if ((b.k === 0 || b.k === 1) && b.counted) ttMiss(R, b, i0);
   }
   R.next = ttNext(L, i0); R.side = -1; R.armed = true;
-  if (i0 === R.route.fin && !R.retired && !R.finished){
+  if (i0 === R.route.fin){
     // the finish line: sub-frame timing from the distances to the line now and a frame ago (in ms)
     const dn = Math.abs((px - b.x)*b.hx + (pz - b.z)*b.hz), dp = Math.abs((ppx - b.x)*b.hx + (ppz - b.z)*b.hz);
-    const sub = Math.trunc(dn/((dn + dp) || 1)*50);
-    if (R.lap > 0){
-      const t = R.lapT - sub; R.lapTimes.push(t); R.lapMiss.push(R.missLap); R.lapT = sub;
-      if (R.lap >= R.laps){ R.finished = true; R.time = R.lapTimes.reduce((a, c) => a + c, 0); ev.push({ e: 'finish', t: R.time }); }
-      else ev.push({ e: 'lap', lap: R.lap, t });
-    } else ev.push({ e: 'start' });
-    if (R.lap < R.laps) R.lap++;
-    R.missLap = 0;
+    ttLapLine(R, Math.trunc(dn/((dn + dp) || 1)*50));
   }
+}
+function ttMiss(R, b, i0){
+  if (R.finished || R.retired) return;
+  R.missLap++; R.missTot++;
+  if (R.missTot >= R.misses){ if (R.misses === 0){ R.retired = 'dq'; R.events.push({ e: 'dq' }); } else if (!R.dqT) R.dqT = 17; }
+  if (R.power > 0 && !R.drain) R.drain = 16;
+  R.events.push({ e: 'miss', k: b.k, i: i0, left: Math.max(R.misses - R.missTot, 0) });
+}
+function ttLapLine(R, sub){
+  if (R.retired || R.finished) return;
+  const ev = R.events;
+  if (R.lap > 0){
+    const t = R.lapT - sub; R.lapTimes.push(t); R.lapMiss.push(R.missLap); R.lapT = sub;
+    if (R.lap >= R.laps){ R.finished = true; R.time = R.lapTimes.reduce((a, c) => a + c, 0); ev.push({ e: 'finish', t: R.time }); }
+    else ev.push({ e: 'lap', lap: R.lap, t });
+  } else ev.push({ e: 'start' });
+  if (R.lap < R.laps) R.lap++;
+  R.missLap = 0;
+}
+// Not in the game: its last crossing didn't count (outside the gate, or in another zone) and the rider carried on
+// instead of going back. Crossing one of the next few entries properly (forwards, near it, in its zone) writes off
+// the ones skipped, a miss for each counted buoy or gate (the start gate before the first lap is free; a skipped
+// finish still ends the lap), so the race can't stall with nothing counting.
+function ttSkipAhead(R, px, pz, ppx, ppz){
+  const L = R.route.list;
+  for (let j = 1, i = ttNext(L, R.next); j <= 3; j++, i = ttNext(L, i)){
+    const b = L[i], d0 = (ppx - b.x)*b.hx + (ppz - b.z)*b.hz, d1 = (px - b.x)*b.hx + (pz - b.z)*b.hz;
+    if (!(d0 < 0 && d1 >= 0)) continue;
+    const t = d0/(d0 - d1), cx = ppx + (px - ppx)*t, cz = ppz + (pz - ppz)*t;
+    if (b.gate ? !ttInGate(R, b, cx, cz) : Math.abs((cx - b.x)*b.hz - (cz - b.z)*b.hx) > 1600) continue;
+    if (!ttSameZone(R.course.zones, cx, cz, b.x, b.z)) continue;
+    for (let k = R.next; k !== i; k = ttNext(L, k)){
+      const s = L[k];
+      if (s.counted && !(k === R.route.fin && R.lap === 0)) ttMiss(R, s, k);
+      if (k === R.route.fin) ttLapLine(R, 0);
+    }
+    const ppX = b.x - b.sx*25, ppZ = b.z - b.sz*25;
+    ttCross(R, i, (b.hz*(cx - ppX) - b.hx*(cz - ppZ)) >= 0 ? 1 : 0, px, pz, ppx, ppz);
+    return true;
+  }
+  return false;
 }
 function ttNext(L, i){ return (i + 1) % L.length; }
 /* ---- Time Trial water: Wave Race 64's wave field (water_69D0.c) ----
@@ -2040,6 +2085,8 @@ function updateGroundMap(x, z){
 /* ---------------- Water optics: presets from the stuff in the water ---------------- */
 // Absorption = pure water + phytoplankton (chlorophyll, mg/m3) + dissolved organic matter (CDOM) + sediment;
 // scattering = water + particles. Channels ~ 620 / 550 / 460 nm. "Mediterranean" reproduces the original look.
+// CLARITY thins all of it out: the water reads clearer than real seawater, so the bed shows through at any depth.
+const CLARITY = 0.35;
 const WATERS = [
   { name:'Tropical',      chl:0.05, cdom:0.004, sed:0.0 },
   { name:'Mediterranean', chl:0.25, cdom:0.03,  sed:0.0 },
@@ -2051,7 +2098,7 @@ function waterOptics(w){
   const a = [0,1,2].map(i => aw[i] + aph*ph[i] + w.cdom*cd[i] + 0.12*w.sed*sd[i]);
   const bp = 0.02*Math.pow(w.chl/0.5, 0.62) + 0.10*w.sed, sw = [0.0012, 0.0025, 0.0055], sl = [0.85, 1.0, 1.15];
   const b = [0,1,2].map(i => sw[i] + bp*sl[i]);
-  return { a, b };
+  return { a: a.map(v => v*CLARITY), b: b.map(v => v*CLARITY) };
 }
 
 /* ---------------- Sky (shared by the water, the breaking-wave lips and reflections) ---------------- */
@@ -3664,7 +3711,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -3798,6 +3845,7 @@ const ttDiffOf = c => c.layouts[TT.diff] ? TT.diff : 'hard';               // Tw
 
 // ---- course land: the wall outlines become shores. Signed distance to the walls (positive on the water side, the
 // side their normals face), sign filled outward from a band around them, then a beach or a quay profile ----
+const TT_SEA_D = 6;   // the courses' sandy floor (m): shallow enough that the bed colours the water everywhere
 function ttBakeLand(course, ox, oz){
   const U = WR.U, n = 1024;
   const segs = course.walls.map(([x, z, nx, nz, tx, tz, L]) => ({ ax: ox + x/U, az: oz + z/U, nx, nz, tx, tz, L: L/U }));
@@ -3839,8 +3887,8 @@ function ttBakeLand(course, ox, oz){
   for (let j=0;j<n;j++) for (let i=0;i<n;i++){
     const k = j*n + i, d = sg[k] >= 0 ? dist[k] : -dist[k], px = X0 + (i + 0.5)*dx, pz = Z0 + (j + 0.5)*dx;
     let h;
-    if (harbour) h = d >= 0 ? -2.5 - (SEA_D - 2.5)*(1 - Math.exp(-d/4)) : -2.5 + 4.9*smoothstep(0, 1.0, -d) + 0.15*vnoise(px*0.2, pz*0.2);
-    else if (d >= 0) h = -0.35 - (SEA_D - 0.35)*(1 - Math.exp(-d/9));
+    if (harbour) h = d >= 0 ? -TT_SEA_D - (9 - TT_SEA_D)*Math.exp(-d/4) : -9 + 12.85*smoothstep(4.6, 5.1, -d);   // quay: the rise sits inside the wall mesh, clear of the 2 m ground map's blur
+    else if (d >= 0) h = -0.35 - (TT_SEA_D - 0.35)*(1 - Math.exp(-d/9));
     else { const e = -d, nz = 0.55*vnoise(px*0.03, pz*0.03) + 0.3*vnoise(px*0.09, pz*0.09) + 0.15*vnoise(px*0.3, pz*0.3);
       h = -0.35 + 1.6*(1 - Math.exp(-e/2.5)) + 10*smoothstep(8, 60, e)*(0.35 + 0.65*nz); }
     H[k] = h;
@@ -3881,6 +3929,51 @@ function ttArrowMesh(){ // a chevron pointing along +x, 1.5 m long, standing upr
   return mbFinish(m);
 }
 // every gate of the route in world coordinates: two striped pylons and a chequered banner between them
+// harbour courses: stone quay walls along the game's wall lines. Outer face on the line (blocks in a running bond, a
+// dark algae band at the waterline), a coping slab on top, the inner face 2.7 m inland; corners mitred on the
+// shared vertex normals so consecutive walls meet
+const TT_WALL = { top: 3.95, bot: -9.5, th: 5.3 };   // thick enough to hide the terrain step from the 2 m ground map
+function ttWallsMesh(course, ox, oz){
+  const m = MeshB(), U = WR.U, T = TT_WALL;
+  const segs = course.walls.map(([x, z, nx, nz, tx, tz, L]) => ({ ax: ox + x/U, az: oz + z/U, nx, nz, tx, tz, L: L/U }));
+  const vk = (x, z) => Math.round(x*8) + ',' + Math.round(z*8), vn = new Map();
+  const addN = (x, z, s) => { const k = vk(x, z), v = vn.get(k) || [0, 0]; v[0] += s.nx; v[1] += s.nz; vn.set(k, v); };
+  for (const s of segs){ addN(s.ax, s.az, s); addN(s.ax + s.tx*s.L, s.az + s.tz*s.L, s); }
+  let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647)/2147483647;
+  const stone = (y, k) => { const v = 0.82 + 0.3*rnd(), alg = smoothstep(0.9, -0.1, y);
+    const c = [0.50*v, 0.51*v, 0.50*v].map((c, i) => c*(1 - alg) + [0.20, 0.25, 0.18][i]*v*alg); return lin(c[0], c[1], c[2], 0.12 + 0.2*alg); };
+  const coping = lin(0.68, 0.67, 0.64, 0.15), inner = lin(0.45, 0.45, 0.44, 0.1);
+  for (const s of segs){
+    const A = [s.ax, s.az], B = [s.ax + s.tx*s.L, s.az + s.tz*s.L];
+    const miter = P => { const v = vn.get(vk(P[0], P[1])); let nx = s.nx, nz = s.nz;
+      if (v){ const l = Math.hypot(v[0], v[1]); if (l > 0.1){ nx = v[0]/l; nz = v[1]/l; } }
+      const c = Math.max(0.35, nx*s.nx + nz*s.nz); return [P[0] - nx*T.th/c, P[1] - nz*T.th/c]; };
+    const Ai = miter(A), Bi = miter(B);
+    // outer face in blocks: 0.62 m courses, blocks ~1.3 m, every other course shifted half a block
+    const yb = -1.6, rows = Math.ceil((T.top - yb)/0.62), bl = 1.3;
+    { const base = m.p.length/3, c = lin(0.16, 0.19, 0.15, 0.1);                  // below the courses: a dark plinth into the deep water
+      for (const q of [[A[0], T.bot, A[1]], [B[0], T.bot, B[1]], [B[0], yb, B[1]], [A[0], yb, A[1]]]) mbVert(m, q, c);
+      const st = m.i.length; m.i.push(base, base+1, base+2, base, base+2, base+3); orient(m, st, c2 => [c2[0] - s.nx, c2[1], c2[2] - s.nz]); }
+    for (let r=0; r<rows; r++){
+      const y0 = yb + r*(T.top - yb)/rows, y1 = yb + (r+1)*(T.top - yb)/rows, off = (r % 2)*bl*0.5;
+      const cuts = [0]; for (let u = off || bl; u < s.L - 0.05; u += bl) cuts.push(u); cuts.push(s.L);
+      for (let k=0; k<cuts.length-1; k++){
+        const u0 = cuts[k], u1 = cuts[k+1], col = stone((y0 + y1)/2, k);
+        const p = u => [A[0] + s.tx*u, A[1] + s.tz*u], a = p(u0), b = p(u1), base = m.p.length/3;
+        mbVert(m, [a[0], y0, a[1]], col); mbVert(m, [b[0], y0, b[1]], col); mbVert(m, [b[0], y1, b[1]], col); mbVert(m, [a[0], y1, a[1]], col);
+        const st = m.i.length; m.i.push(base, base+1, base+2, base, base+2, base+3); orient(m, st, c => [c[0] - s.nx, c[1], c[2] - s.nz]);
+      }
+    }
+    const quad = (P0, P1, P2, P3, col, out) => { const base = m.p.length/3; for (const q of [P0, P1, P2, P3]) mbVert(m, q, col);
+      const st = m.i.length; m.i.push(base, base+1, base+2, base, base+2, base+3); orient(m, st, out); };
+    quad([A[0], T.top, A[1]], [B[0], T.top, B[1]], [Bi[0], T.top, Bi[1]], [Ai[0], T.top, Ai[1]], coping, c => [c[0], c[1] - 1, c[2]]);
+    quad([Ai[0], T.bot, Ai[1]], [Bi[0], T.bot, Bi[1]], [Bi[0], T.top, Bi[1]], [Ai[0], T.top, Ai[1]], inner, c => [c[0] + s.nx, c[1], c[2] + s.nz]);
+    // a small lip along the top edge
+    const lip = 0.12;
+    quad([A[0] + s.nx*lip, T.top - 0.18, A[1] + s.nz*lip], [B[0] + s.nx*lip, T.top - 0.18, B[1] + s.nz*lip], [B[0] + s.nx*lip, T.top + 0.05, B[1] + s.nz*lip], [A[0] + s.nx*lip, T.top + 0.05, A[1] + s.nz*lip], coping, c => [c[0] - s.nx, c[1], c[2] - s.nz]);
+  }
+  return mbFinish(m);
+}
 function ttGatesMesh(route, ox, oz){
   const m = MeshB(), U = WR.U;
   for (const b of route.list){
@@ -3914,7 +4007,7 @@ function ttGatesMesh(route, ox, oz){
 const ttBufs = { red: makeGeoBuffer(false), yellow: makeGeoBuffer(false), small: makeGeoBuffer(false), arrow: makeGeoBuffer(false), gates: makeGeoBuffer(false) };
 ttBufs.red.set(ttBuoyMesh(TT_COL.red, 1, 'R')); ttBufs.yellow.set(ttBuoyMesh(TT_COL.yellow, 1, 'L')); ttBufs.small.set(ttBuoyMesh(TT_COL.grey, 0.6));
 ttBufs.arrow.set(ttArrowMesh());
-ttBufs.boxes = makeGeoBuffer(false);
+ttBufs.boxes = makeGeoBuffer(false); ttBufs.walls = makeGeoBuffer(false);
 ttBufs.pink = makeGeoBuffer(false); ttBufs.pink.set(ttBuoyMesh(TT_COL.pink, 0.5));
 
 // ---- ramps: each object's box set, turned by (angle + 180 deg) and moved into place (func_801EE6F4, func_801EDC60).
@@ -4269,6 +4362,7 @@ function ttStart(){
   ttRestart();
   ttBufs.gates.set(ttGatesMesh(TT.R.route, TT.ox, TT.oz));
   ttBufs.boxes.set(ttBoxesMesh(TT.boxes, TT.ox, TT.oz));
+  if (course.style === 'harbour') ttBufs.walls.set(ttWallsMesh(course, TT.ox, TT.oz)); else ttBufs.walls.n = 0;
   document.body.classList.add('ttmode'); $tt.hidden = false;
 }
 function ttRestart(){
@@ -4458,9 +4552,22 @@ function ttFrameUI(dt){
   else sp.className = '';
   if (TT.outT > 0){ $ttOut.className = 'on'; $ttOut.innerHTML = `COURSE OUT <b>${Math.floor(TT.outT/20)}</b>`; } else $ttOut.className = '';
   ttHud();
+  // guidance: the next marker is behind you, or the last crossing did not count (outside the gate, or in another zone:
+  // the game makes you go back and cross it again; here carrying on also works, see ttSkipAhead). A compass arrow points at it.
+  const $dir = document.getElementById('ttDir'), nb = R.route.list[R.next];
+  { const S = TT.S, tx = nb.x + (nb.k <= 1 ? nb.sx*260 : 0), tz = nb.z + (nb.k <= 1 ? nb.sz*260 : 0), dx = tx - S.cen[0], dz = tz - S.cen[2];
+    const dist = Math.hypot(dx, dz), want = Math.atan2(dx, dz), have = Math.atan2(S.fwd[0], S.fwd[2]);
+    let rel = want - have; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    TT.away = (Math.abs(rel) > 1.9 && dist > 600 && TT.phase === 'race') ? (TT.away || 0) + dt : 0;
+    const show = !R.finished && !R.retired && TT.phase === 'race' && (!R.armed || TT.away > 2.5);
+    $dir.className = show ? 'on' : '';
+    if (show){ $dir.querySelector('i').style.transform = `rotate(${(-rel*180/Math.PI).toFixed(0)}deg)`;
+      $dir.querySelector('span').textContent = !R.armed ? (nb.gate ? 'Missed the gate: go back through it, or carry on for a miss' : 'Missed it: go back and cross it, or carry on for a miss') : 'Wrong way'; } }
   // pass-side cue for the next counted buoy
   const $cue = document.getElementById('ttCue'), b = R.route.list[R.next];
-  if (!R.finished && !R.retired && TT.phase !== 'countdown' && (b.k === 0 || b.k === 1) && b.counted){
+  const busy = $dir.className === 'on' || ttBigT > 0 || (TT.split && TT.split.t > 0);   // it shares the screen middle with these
+  if (busy) $cue.className = '';
+  else if (!R.finished && !R.retired && TT.phase !== 'countdown' && (b.k === 0 || b.k === 1) && b.counted){
     $cue.className = 'on ' + (b.k === 0 ? 'red' : 'yel'); $cue.textContent = b.k === 0 ? 'Red: keep it on your left ◀' : '▶ Yellow: keep it on your right';
   } else if (!R.finished && !R.retired && b.k === 3 && R.lap > 0){ $cue.className = 'on fin'; $cue.textContent = R.lap >= R.laps ? 'Finish line' : 'Lap line'; }
   else $cue.className = '';
@@ -4491,6 +4598,8 @@ function ttDraw(t){
     drawAt(ttBufs.pink, X, w[0] + 0.3, Z, w[4]*0.8, w[5]*0.8, 0);
   }
   ttDrawProps(drawAt);
+  if (ttBufs.walls.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
+    gl.bindVertexArray(ttBufs.walls.vao); gl.drawElements(gl.TRIANGLES, ttBufs.walls.n, gl.UNSIGNED_INT, 0); }
   if (ttBufs.boxes.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
     gl.bindVertexArray(ttBufs.boxes.vao); gl.drawElements(gl.TRIANGLES, ttBufs.boxes.n, gl.UNSIGNED_INT, 0); }
   if (ttBufs.gates.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
@@ -4588,6 +4697,7 @@ addEventListener('blur', () => keys.clear());
 const $bSea = document.getElementById('bSea');
 $bSea.textContent = 'Sea: ' + SEAS[ocean.sea].name;
 document.getElementById('mode').addEventListener('click', () => { if (hasTouch) showMenu(); });   // no H key on touch screens
+document.getElementById('bMenu').addEventListener('click', e => { e.stopPropagation(); showMenu(); });
 function setSeaState(i, quiet){ ocean.setSea(i); if (!quiet) flash('Sea state: ' + SEAS[i].name); $bSea.textContent = 'Sea: ' + SEAS[i].name; }
 $bSea.addEventListener('click', e => { e.stopPropagation(); start(); setSeaState((ocean.sea + 1) % SEAS.length); });
 document.getElementById('bCam').addEventListener('click', e => { e.stopPropagation(); start(); cycleCam(); });

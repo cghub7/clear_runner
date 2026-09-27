@@ -28,7 +28,7 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 | `Shift` | Slide (R): the hull lets go sideways for tight turns |
 | `R` · `C` · `H` | Restart · camera · menu (pauses the race) |
 | Gamepad | Left stick steers and leans, A / RT throttle, RB / LT slide, Y camera, B restart |
-| Touch | Left pad steers, GAS pad throttles |
+| Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, snap for stunts · GAS pad · SLIDE pad |
 
 ### Free roam
 
@@ -46,7 +46,7 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 | `R` · `M` · `H` | Reset · mute · help |
 | Mouse drag / wheel | Look around / zoom |
 | Gamepad | Stick steers, RT gas, LT brake, Y camera, B reset |
-| Touch | Left pad steers, GAS pad throttles; **Sea**, **Camera** and **Gfx** buttons at the top right; tap the bottom-left pill for the menu; a **Flip upright** button appears when you capsize |
+| Touch | Left stick steers (and trims: push up for nose down, pull down for nose up), GAS pad throttles; **Sea**, **Camera** and **Gfx** buttons at the top right; tap the bottom-left pill for the menu; a **Flip upright** button appears when you capsize |
 
 Free roam offers two jetskis: the **stand-up racer** (160 hp, ridden standing and leaned hard) and the **sit-down cruiser** (300 hp, seated, faster and more stable). Time Trial rides the stand-up racer, as Wave Race 64 does.
 

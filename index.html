@@ -85,7 +85,15 @@
     border:1.5px solid rgba(255,255,255,.35); background:rgba(10,30,30,.15); }
   #touch .l { left:24px; } #touch .r { right:24px; bottom:calc(170px + env(safe-area-inset-bottom,0px)); width:96px; height:96px; }
   #touch .r::after { content:"GAS"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:700; opacity:.7; }
-  #touch .l::after { content:"◀  ▶"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:.6; }
+  #touch .l { transition:opacity .2s; } #touch .l.on { opacity:1; transition:none; }
+  #touch .l i { position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:rgba(255,255,255,.35);
+    box-shadow:0 0 0 1.5px rgba(255,255,255,.55); }
+  #touch .l::after { content:"STICK"; position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:10px; font-weight:700; letter-spacing:.08em; opacity:.5; }
+  #touch .s { display:none; right:134px; bottom:calc(183px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; }
+  body.touch #hud { transform:scale(.72); transform-origin:100% 100%; } body.touch.ttmode #tt { transform:scale(.85); transform-origin:0 0; }
+  body.ttmode #bSea { display:none !important; }
+  body.ttmode #touch .s { display:block; } #touch .pad.hold { background:rgba(90,215,242,.3); }
+  #touch .s::after { content:"SLIDE"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; opacity:.7; }
   /* ---- mode switch and Time Trial ---- */
   #modes { display:flex; gap:8px; margin:0 0 14px; }
   #modes button { flex:1; text-align:left; padding:10px 12px; border-radius:14px; border:1.5px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06);
@@ -156,7 +164,7 @@
 <div id="msg" class="glass"></div>
 <button id="bFlip" class="glass">↻ Flip upright</button>
 <div id="mbtns"><button id="bSea" class="glass tonly">Sea: Light chop</button><button id="bCam" class="glass tonly">Camera</button><button id="bScene" class="glass tonly">Day</button><button id="bGfx" class="glass">Graphics: High</button></div>
-<div id="touch"><div class="pad l"></div><div class="pad r"></div></div>
+<div id="touch"><div class="pad l"><i></i></div><div class="pad r"></div><div class="pad s"></div></div>
 <div id="start">
   <div id="card" class="glass">
     <h1>Clear Runner</h1>
@@ -187,6 +195,7 @@
       <tr><td>Buoys</td><td>Pass <b style="color:#ff8a78">red</b> on its right, <b style="color:#ffe25a">yellow</b> on its left. Each one passed right adds power (5 = max); a miss resets it, 5 misses and you're out</td></tr>
       <tr><td><kbd>R</kbd> · <kbd>C</kbd> · <kbd>H</kbd></td><td>Restart · camera · menu (pauses)</td></tr>
       <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, RB / LT slide, Y camera, B restart</td></tr>
+      <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean, snap it for stunts · GAS · SLIDE</td></tr>
     </table>
     <table id="freeKeys">
       <tr><td><kbd>W</kbd> <kbd>S</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>Throttle / brake &amp; reverse</td></tr>
@@ -3655,7 +3664,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.0.0';
+const VERSION = '1.4.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -4252,6 +4261,7 @@ function ttStart(){
   ttBakeLand(course, TT.ox, TT.oz);
   TT.walls = wrWalls(course.walls);
   // sea: the course's wave level (WR64 default conditions) mapped onto the ocean's sea states
+  if (TT.sea0 === undefined) TT.sea0 = ocean.sea;
   setSeaState(0, true);                            // the waves are the game's own field (WRW); Clearwater adds fine detail
   // the game's light: Sunset Bay races at dusk, Twilight City by night (T still changes it for this run)
   if (TT.scene0 === undefined) TT.scene0 = sceneIdx; else applyScene(TT.scene0);
@@ -4282,7 +4292,7 @@ function ttRestart(){
   ttHud(true);
 }
 function ttStop(){
-  WRW.on = false;
+  WRW.on = false; if (TT.sea0 !== undefined){ setSeaState(TT.sea0, true); TT.sea0 = undefined; }
   if (TT.scene0 !== undefined) applyScene(TT.scene0); TT.scene0 = undefined;
   TT.on = false; CLAND.on = false; uploadCourseLand(); $tt.hidden = true; $ttRes.hidden = true; $ttBig.className = '';
   $ttPass.className = ''; $ttOut.className = ''; document.body.classList.remove('ttmode');
@@ -4310,7 +4320,8 @@ function ttInput(dt){
     if (y && !inp.padY) cycleCam(); if (b && !inp.padB) ttRestart(); inp.padY = y; inp.padB = b;
   }
   if (touch.gasId !== null) thr = true;
-  if (touch.steerId !== null) px = touch.steer*80;
+  if (touch.steerId !== null){ px = touch.steer*80; py = touch.sy*80; }
+  if (touch.slideId !== null) slide = true;
   if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; }
   TT.pad = { x: px, y: py, thr, slide };
 }
@@ -4369,6 +4380,7 @@ function ttFrameEnd(){
     else { TT.outT--; if (TT.outT % 20 === 0) TT_SND.out(); if (TT.outT === 0){ R.retired = 'out'; R.events.push({ e: 'dq', out: true }); } }
   } else TT.outT = 0;
   if (S.tricks !== TT.tricks0){ TT.tricks0 = S.tricks; $air.textContent = ['', 'BARREL ROLL', 'BARREL ROLL', 'DIVE', 'FLIP'][S.trick] || ''; $air.classList.add('on'); airShown = 1.2; }
+  if (S.wetCount === 0) ski.airT += 0.05; else { if (ski.airT > 0) ski.lastAir = ski.airT; ski.airT = 0; }
   TT.upside = S.up[1] < 0.1 ? (TT.upside || 0) + 1 : 0;
   if (TT.upside > 30){ TT.upside = 0; wrPlace(S, S.cen[0], S.cen[2], Math.atan2(S.fwd[0], S.fwd[2])); }
   // the game's water frame: source ahead of the camera, swell trains, the solver
@@ -4404,12 +4416,12 @@ function ttEvent(ev){
     const newLap = !best || !(best.lap > 0) || lapBest < best.lap;
     ttSaveBest(rec);
     ttBig(`<b>FINISH</b><small>${ttFmt(R.time)}${nb ? ' · NEW RECORD' : ''}</small>`, 3.5, 'fin');
-    setTimeout(() => ttResults(nb, newLap, rec), 1800);
+    const R0 = TT.R; setTimeout(() => { if (TT.R === R0) ttResults(nb, newLap, rec); }, 1800);
   }
   if (ev.e === 'dq'){
     TT_SND.bad();
     ttBig(ev.out ? '<b>COURSE OUT</b><small>Retired</small>' : '<b>DISQUALIFIED</b><small>5 buoys missed</small>', 3.5, 'dq');
-    setTimeout(() => ttResults(false, false, TT.best), 2200);
+    const R0 = TT.R; setTimeout(() => { if (TT.R === R0) ttResults(false, false, TT.best); }, 2200);
   }
 }
 function ttResults(nb, newLap, rec){
@@ -4602,21 +4614,38 @@ canvas2.addEventListener('pointermove', e => {
 const endPtr = e => { if (e.pointerType === 'touch') touchEnd(e); if (drag && drag.id === e.pointerId) drag = null; };
 canvas2.addEventListener('pointerup', endPtr); canvas2.addEventListener('pointercancel', endPtr);
 canvas2.addEventListener('wheel', e => { cam.dist = clamp(cam.dist*Math.exp(e.deltaY*0.001), 3.5, 18); e.preventDefault(); }, { passive:false });
-// touch: left pad steers, right pad is the throttle
-const touch = { steerId:null, steerX:0, steer:0, gasId:null };
+// touch: a 360-degree stick on the left (it centres where the thumb lands: x steers, y leans / trims), the throttle
+// pad on the right, and in Time Trial a SLIDE pad (the N64's R)
+const touch = { steerId:null, ox:0, oy:0, steer:0, sy:0, gasId:null, slideId:null };
+const $tpad = document.querySelector('#touch .l'), $tknob = document.querySelector('#touch .l i'), $tgas = document.querySelector('#touch .r'), $tslide = document.querySelector('#touch .s');
+const TSTICK = 55;                                           // pixels from the centre to full lock
 const hasTouch = 'ontouchstart' in window;
 if (hasTouch){ document.getElementById('touch').style.display = 'block'; document.body.classList.add('touch'); }
 function touchCtl(e, down){
   if (!hasTouch) return false;
   if (down){
-    if (e.clientX < innerWidth*0.4 && e.clientY > innerHeight*0.45){ touch.steerId = e.pointerId; touch.steerX = e.clientX; start(); return true; }
-    if (e.clientX > innerWidth*0.6 && e.clientY > innerHeight*0.45){ touch.gasId = e.pointerId; start(); return true; }
+    if (TT.on && $tslide.offsetParent){ const r = $tslide.getBoundingClientRect();
+      if (Math.hypot(e.clientX - (r.left + r.right)/2, e.clientY - (r.top + r.bottom)/2) < r.width*0.75){ touch.slideId = e.pointerId; $tslide.classList.add('hold'); start(); return true; } }
+    if (e.clientX < innerWidth*0.45 && e.clientY > innerHeight*0.4){
+      touch.steerId = e.pointerId; touch.ox = e.clientX; touch.oy = e.clientY; touch.steer = touch.sy = 0;
+      $tpad.style.left = (e.clientX - 60) + 'px'; $tpad.style.bottom = (innerHeight - e.clientY - 60) + 'px'; $tpad.classList.add('on');
+      $tknob.style.transform = ''; start(); return true; }
+    if (e.clientX > innerWidth*0.55 && e.clientY > innerHeight*0.4){ touch.gasId = e.pointerId; $tgas.classList.add('hold'); start(); return true; }
     return false;
   }
-  if (e.pointerId === touch.steerId){ touch.steer = clamp((e.clientX - touch.steerX)/70, -1, 1); return true; }
-  return e.pointerId === touch.gasId;
+  if (e.pointerId === touch.steerId){
+    let dx = e.clientX - touch.ox, dy = e.clientY - touch.oy; const l = Math.hypot(dx, dy);
+    if (l > TSTICK){ dx *= TSTICK/l; dy *= TSTICK/l; }
+    touch.steer = dx/TSTICK; touch.sy = -dy/TSTICK;                      // up the screen = stick forward
+    $tknob.style.transform = `translate(${dx}px, ${dy}px)`; return true;
+  }
+  return e.pointerId === touch.gasId || e.pointerId === touch.slideId;
 }
-function touchEnd(e){ if (e.pointerId === touch.steerId){ touch.steerId = null; touch.steer = 0; } if (e.pointerId === touch.gasId) touch.gasId = null; }
+function touchEnd(e){
+  if (e.pointerId === touch.steerId){ touch.steerId = null; touch.steer = touch.sy = 0; $tknob.style.transform = ''; $tpad.classList.remove('on'); $tpad.style.left = ''; $tpad.style.bottom = ''; }
+  if (e.pointerId === touch.gasId){ touch.gasId = null; $tgas.classList.remove('hold'); }
+  if (e.pointerId === touch.slideId){ touch.slideId = null; $tslide.classList.remove('hold'); }
+}
 
 const inp = { thr:0, brk:0, steer:0, stand:0, padY:false, padB:false };
 function readInput(dt){
@@ -4638,7 +4667,7 @@ function readInput(dt){
     if ((rt > 0.1 || y || b) && !started) start();
   }
   if (touch.gasId !== null) thr = 1;
-  if (touch.steerId !== null){ steer = touch.steer; analog = true; }
+  if (touch.steerId !== null){ steer = touch.steer; analog = true; if (Math.abs(touch.sy) > 0.35) pitch = -touch.sy; }
   if (AUTO){ thr = Q.has('athr') ? +Q.get('athr') : 1; steer = Q.has('asteer') ? +Q.get('asteer') : Q.has('straight') ? 0 : (Math.sin(tSim*0.35) > 0.6 ? 1 : (Math.sin(tSim*0.35) < -0.85 ? -1 : 0)); }
   if (!started && !AUTO){ thr = 0; brk = 0; steer = 0; }
   inp.thr += (thr - inp.thr)*Math.min(1, dt*9);

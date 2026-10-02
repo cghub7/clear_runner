@@ -17,18 +17,21 @@ Graphics has four presets (Low, Medium, High, Ultra): the first run picks one au
 Three laps of a Wave Race 64 course, alone against the clock. Choose the course, the layout (Normal, Hard, Expert: the buoy layouts of the game's three championship levels; Twilight City has no Normal layout), the machine (the game's four riders' machines, named here by how they handle) and its tuning (the game's grip, engine and steering settings, 0 to 11, centred by default).
 
 - **Buoys.** Pass **red** buoys on their right (keep them on your left) and **yellow** buoys on their left. A green arrow floats over the next one and points to the side to take. Each buoy passed correctly adds a level of power (five is maximum power, extra thrust); a miss drains it to zero. Five misses disqualify you. If you slip past a buoy or through the wrong side of a gate, a yellow arrow points back at it: go back and take it, or carry on and it counts as a miss when you take the next one.
+- **Falls.** Hit a wall, a buoy or a ramp's side hard at speed, or touch down on your side, and the rider is thrown off: the jetski slides away, the rider swims back and climbs on. Tap the throttle while they climb to get going sooner. A smaller knock makes the rider stagger with little thrust for a moment; let go of the throttle to find the balance sooner.
+- **Stunts.** In the air above 60 km/h on the throttle, flick the stick from one side to the other for a barrel roll, back then forward for a dive, forward then back for a flip. Land one on its side and you fall.
 - **Course out.** Leave the course area and a count from 10 starts; get back before it ends or you retire.
 - **Timing.** Lap and total times like the game (1'23"45), timed to the millisecond at the line. Records, best lap and a split against your record's lap times are kept per course and layout.
 
 | Control | Time Trial |
 | --- | --- |
 | `W` / `↑` / `Space` | Throttle (the N64's A button) |
-| `A` / `D` or `←` / `→` | Steer (a virtual stick: taps give small corrections) |
+| `A` / `D` or `←` / `→` | Steer (a virtual stick: taps give small corrections, and pressing the other way flicks it straight across, for stunts) |
 | `S` / `↓` · `Q` | Lean back (nose up, for jumps) · lean forward (nose down) |
 | `Shift` | Slide (R): the hull lets go sideways for tight turns |
+| `E` | Crouch (B): the rider drops low and loads the hull |
 | `R` · `C` · `H` | Restart · camera · menu (pauses the race) |
-| Gamepad | Left stick steers and leans, A / RT throttle, RB / LT slide, Y camera, B restart |
-| Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, snap for stunts · GAS pad · SLIDE pad |
+| Gamepad | Left stick steers and leans, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu |
+| Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, flick for stunts · GAS pad (tap it to climb back on faster after a fall) · SLIDE pad · CROUCH pad · **Restart**, **Camera** and **☰ Menu** buttons at the top right |
 
 ### Free roam
 
@@ -46,7 +49,7 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 | `R` · `M` · `H` | Reset · mute · help |
 | Mouse drag / wheel | Look around / zoom |
 | Gamepad | Stick steers, RT gas, LT brake, Y camera, B reset |
-| Touch | Left stick steers (and trims: push up for nose down, pull down for nose up), GAS pad throttles; **Sea**, **Camera** and **Gfx** buttons at the top right; tap the bottom-left pill for the menu; a **Flip upright** button appears when you capsize |
+| Touch | Left stick steers (and trims: push up for nose down, pull down for nose up), GAS pad throttles; **Sea**, **Camera** and **Gfx** buttons at the top right; **☰ Menu** for the menu; a **Flip upright** button appears when you capsize |
 
 Free roam offers two jetskis: the **stand-up racer** (160 hp, ridden standing and leaned hard) and the **sit-down cruiser** (300 hp, seated, faster and more stable). Time Trial rides the stand-up racer, as Wave Race 64 does.
 
@@ -65,10 +68,11 @@ Everything in the Time Trial comes from the Wave Race 64 (USA, Rev A) analysis i
 - **Obstacles.** Buoys are bumpable and spring back to their anchors; the pink marker buoys along the edges are bumpable too. Route markers and the CPU riders' line are not obstacles.
 - **The race rules** (`func_8007687C`): the side you pass a buoy on is decided when you cross the line through it; a correct pass adds power (5 max, extra thrust), a miss starts a 0.8 s drain to zero and counts toward the 5 misses; crossings only count within the buoy's zone (in the game you must go back and recross; Clear Runner also lets you carry on and writes the skipped ones off as misses, so the race can't stall); lap times are interpolated inside the frame. Course out (`func_801F1CFC`), the start grid 12.8 m behind the line, the buoys that float on springs and can be bumped, and the start-gate pylons are the game's too.
 - **The courses.** Each course's buoy route for all three layouts, its course area, its zones and its wall outlines were read out of the course data segments. The wall outlines are the game's collision walls here too, and they are baked into the terrain as shores: sandy islands, dunes and pines for the natural courses, and for Port Blue, Marine Fortress and Twilight City modelled stone quay walls (block courses, an algae band at the waterline, a coping slab). The courses sit on a clear, sandy floor 6 m down. The waves use the course's wave level, mapped onto the ocean's sea states. Sunset Bay races at dusk and Twilight City by moonlight.
+- **Falls** (`func_8005DE24`'s rider states, `func_80061184`, `func_80063C88`). Each frame the collision code records the hardest closing speed per kind of obstacle (buoys, gate pylons and marker buoys, walls, boxes and ramps, props), and each machine has its own limits. Above 40 km/h, past the limit, or touching the water rolled past about 65°, the rider is thrown off: five frames with the controls dead while the hull is let loose (it slides on with its sideways grip gone), then the rider is in the water until the hull settles or 1.25 s pass, then climbs back on (77 frames, the controls back from frame 56, each press or release of the throttle skipping a frame). A smaller knock is a stagger, thrust × 0.3 until 2 s pass, or 0.55 s once the throttle is let go or the craft is slow; a light buoy knock or riding rolled past about 60° is a wobble with less grip. B is the game's crouch: gravity × 1.75, easing back over 10 frames while held.
 - **Ramps, stunts, the rider's balance.** Each course's ramps and structures are built from the game's own oriented collision boxes (the boxes are also what you see), with the game's box response (softer on ramps). Stunts are the game's: in the air above 60 km/h on the throttle, snap the stick from one side to full on the other within 3 frames for a barrel roll (either way), back-to-forward for a dive, forward-to-back for a flip; hold it to keep turning. The rider's balance filters (side lean from the stern's slip, a crouch spring, a fore/aft shift) are the game's, and they set the direction of the fore/aft lean push.
 - **The water is the game's.** Wave Race 64 simulates only a hexagon about 38 m across ahead of the camera: a 1-second source at its far edge paints rolls you then ride into, each course's swell generators send big crests through fixed zones, your wake is a trough carved into the same field, and the course starts from random bumps. Clearwater renders it and adds calm fine detail.
 - **Scenery props.** Where each prop stands, which ones float and which ones you can hit come from the course's object list and the game's object classes; the models are Clear Runner's own, after what the courses show: palms, canopy tents, chevron boards, banner fences and flags on Sunny Beach's sandbar, driftwood on Drake Lake (more on Expert), floating mines and wreckage at Marine Fortress, oil drums in Port Blue, rocks off Southern Island. Mines and drums bob and get pushed aside; rocks and wreckage don't give. Race buoys carry a block R (red) or L (yellow), as the game's do.
-- **What's new.** The jetski, rider, spray, foam and camera are Clear Runner's; buoys, gates, ramps, props and the arrow are modern models (no game assets). Not ported: the CPU riders and the rider's keyframe animation (Clear Runner's rider is posed from the game's balance values instead).
+- **What's new.** The jetski, rider (including how a fall looks: thrown clear, swimming back, climbing on), spray, foam and camera are Clear Runner's; buoys, gates, ramps, props and the arrow are modern models (no game assets). Not ported: the CPU riders and the rider's keyframe animation (Clear Runner's rider is posed from the game's balance values instead).
 
 ## How Free roam works (Clearwater Jetski)
 

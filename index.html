@@ -96,7 +96,9 @@
   body.touch #mode { display:none; }
   body.touch #ttCue { bottom:auto; top:calc(34% + env(safe-area-inset-top,0px)); }
   body.touch #ttDir { top:calc(30% + env(safe-area-inset-top,0px)); }
-  body.ttmode #bSea { display:none !important; }
+  body.ttmode #bSea { display:none !important; } #bRestart { display:none !important; } body.touch.ttmode #bRestart { display:block !important; }
+  #touch .c { display:none; right:30px; bottom:calc(40px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; } body.ttmode #touch .c { display:block; }
+  #touch .c::after { content:"CROUCH"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; opacity:.7; }
   body.ttmode #touch .s { display:block; } #touch .pad.hold { background:rgba(90,215,242,.3); }
   #touch .s::after { content:"SLIDE"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; opacity:.7; }
   /* ---- mode switch and Time Trial ---- */
@@ -173,8 +175,8 @@
 <div id="air"></div>
 <div id="msg" class="glass"></div>
 <button id="bFlip" class="glass">↻ Flip upright</button>
-<div id="mbtns"><button id="bMenu" class="glass tonly">☰ Menu</button><button id="bSea" class="glass tonly">Sea: Light chop</button><button id="bCam" class="glass tonly">Camera</button><button id="bScene" class="glass tonly">Day</button><button id="bGfx" class="glass">Graphics: High</button></div>
-<div id="touch"><div class="pad l"><i></i></div><div class="pad r"></div><div class="pad s"></div></div>
+<div id="mbtns"><button id="bMenu" class="glass tonly">☰ Menu</button><button id="bSea" class="glass tonly">Sea: Light chop</button><button id="bRestart" class="glass tonly">↺ Restart</button><button id="bCam" class="glass tonly">Camera</button><button id="bScene" class="glass tonly">Day</button><button id="bGfx" class="glass">Graphics: High</button></div>
+<div id="touch"><div class="pad l"><i></i></div><div class="pad r"></div><div class="pad s"></div><div class="pad c"></div></div>
 <div id="start">
   <div id="card" class="glass">
     <h1>Clear Runner</h1>
@@ -201,11 +203,13 @@
       <tr><td><kbd>W</kbd> / <kbd>↑</kbd> / <kbd>Space</kbd></td><td>Throttle (A)</td></tr>
       <tr><td><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></td><td>Steer</td></tr>
       <tr><td><kbd>S</kbd> / <kbd>↓</kbd> · <kbd>Q</kbd></td><td>Lean back (nose up, jumps) · lean forward (nose down)</td></tr>
-      <tr><td><kbd>Shift</kbd></td><td>Slide (R): let the hull drift through tight turns</td></tr>
+      <tr><td><kbd>Shift</kbd> · <kbd>E</kbd></td><td>Slide (R): let the hull drift through tight turns · crouch (B): drop low and load the hull</td></tr>
+      <tr><td>Stunts</td><td>In the air above 60 km/h on the throttle, flick the stick from one side to the other: barrel roll; back then forward: dive; forward then back: flip</td></tr>
+      <tr><td>Falls</td><td>Hit something hard, or touch down on your side, and you're thrown off. Tap the throttle to climb back on faster. After a knock, let go of the throttle to find your balance sooner</td></tr>
       <tr><td>Buoys</td><td>Pass <b style="color:#ff8a78">red</b> on its right, <b style="color:#ffe25a">yellow</b> on its left. Each one passed right adds power (5 = max); a miss resets it, 5 misses and you're out</td></tr>
       <tr><td><kbd>R</kbd> · <kbd>C</kbd> · <kbd>H</kbd></td><td>Restart · camera · menu (pauses)</td></tr>
-      <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, RB / LT slide, Y camera, B restart</td></tr>
-      <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean, snap it for stunts · GAS · SLIDE</td></tr>
+      <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu</td></tr>
+      <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean fore/aft, flick it for stunts · GAS (tap it to climb back on faster) · SLIDE · CROUCH · Restart, Camera and Menu at the top right</td></tr>
     </table>
     <table id="freeKeys">
       <tr><td><kbd>W</kbd> <kbd>S</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>Throttle / brake &amp; reverse</td></tr>
@@ -1011,6 +1015,14 @@ WR.T = {
   yaw:[0.002,0.0027,0.0021,0.002],                                                       // D_800D9480 slow-speed pivot
   roll:[0.72,0.75,0.63,0.63], flip:[0.55,0.55,0.55,0.53],                                // D_800D9400/10 stunt strength
 };
+// the rider's falls (func_8005DE24), per rider slot: closing speeds (units per sub-step) that throw the rider off
+// (unk169C..16B0, from D_800D92F0..D_800D9340), that knock them into a stagger or a wobble (D_800D9360..D_800D93B0),
+// and how far the hull may roll while touching the water (up.y: D_800D9350 thrown off, D_800D93C0 wobble)
+WR.CRASH = {
+  offBuoy:[10,10.5,9.5,10], offPylon:[9.5,10,9,8], offWall:[8.5,9,8,8], offBox:[8.5,9,8,8], offUp:[0.38,0.43,0.43,0.4],
+  kn9360:[5,6,5.9,5.5], knPylon:[4,4,3,3.3], knWall:[4,4,3,3.3], knBox:[4,4,3,4], wobUp:[0.48,0.53,0.53,0.5],
+};
+const RS = { RIDE: 0, SWIM: 1, CLIMB: 2, STAGGER: 3 };   // the game's states 0x16, 0x17, 7, 0x18
 // gSinTable lookups: 4096 steps a turn, index truncated like the game's (s32) cast
 const wrSin = i => Math.sin(((i|0) & 4095)*(Math.PI/2048));
 // the game's stick shaping (func_80061708 + func_80061644): the round gate is stretched to a square, then each axis
@@ -1046,12 +1058,14 @@ function wrCraft(r, tune){
   // particle weights ramp from w4 at the centre to w8 at the farthest particle (func_8004AC80)
   let md = 0; const d = WR.REST.map(p => { const l = Math.hypot(p[0], p[1], p[2]); md = Math.max(md, l); return l; });
   for (let i=0;i<12;i++) S.w[i] = T.w4[r] + d[i]*(T.w8[r] - T.w4[r])/md;
+  S.w0 = S.w.slice();                                                            // unk65C: kept to restore after a fall
+  wrRiderReset(S);
   for (let e=0;e<66;e++){ const a = WR.REST[WR.EDGES[e*2]], b = WR.REST[WR.EDGES[e*2+1]];
     S.rest[e] = Math.hypot(b[0]-a[0], b[1]-a[1], b[2]-a[2])*WR.RELAX; }           // func_8004AE88: rest x relax
   return S;
 }
 // drop the craft at (x, z) heading a (radians: forward = (sin a, cos a)), at rest (func_80062E50)
-function wrPlace(S, x, z, a){
+function wrPlace(S, x, z, a, keepRider){
   const s = Math.sin(a), c = Math.cos(a);
   for (let i=0;i<12;i++){ const [lx, ly, lz] = WR.REST[i];
     S.P[i*3] = x + lx*c + lz*s; S.P[i*3+1] = ly; S.P[i*3+2] = z - lx*s + lz*c; }
@@ -1059,8 +1073,17 @@ function wrPlace(S, x, z, a){
   S.cen = [x, 0, z]; S.delta = [0,0,0]; S.mdir = [0,0,0]; S.spd = 0; S.B98 = 0; S.B78 = [0,0,0]; S.B90 = 0;
   S.wetCount = 8; S.wetAny = 1; S.kLat = S.k15E8; S.kB = 0.03; S.ky = 0.85; S.B60 = 0; S.C20 = [0,0,0]; S.C2C = [0,0,0];
   S.C0C = 34.11; S.C10 = -27.3; S.bal = 0; S.trick = 0;                                  // the rider's crouch height, fore/aft shift, side lean
+  if (!keepRider) wrRiderReset(S);
   wrOrient(S); S.BE4 = S.cen.slice();
   S.C14 = [0,1,2].map(k => S.cen[k] + 0.1806645*S.up[k] - 26.9998535*S.fwd[k]);
+}
+// the rider on board, upright, nothing pending (and the hull's own particle weights back)
+function wrRiderReset(S){
+  S.rs = RS.RIDE; S.t1608 = 0; S.t16E0 = 0; S.m1602 = 0; S.c74 = -1; S.c58 = 0; S.c1574 = 0; S.k157C = 0;
+  if (S.thrown && S.w0) S.w.set(S.w0);
+  S.thrown = 0; S.k15D8 = 1; S.btnB = 0; S.thrRaw = 0; S.thrEdge = 0; S.falls = S.falls || 0;
+  S.C38 = S.C3C = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0];
+  S.rb = { p: [0, 0, 0], pp: [0, 0, 0], v: [0, 0, 0], wet: 0, hd: [0, 1], t: 0, tw: 0 };
 }
 // func_800624CC: the hull's frame from its particles. forward = p8 - p11, up = p11 over the mid-point of p9/p10,
 // left = up x forward (+x in the rest frame: the side the stern is pushed to when the stick goes right)
@@ -1075,6 +1098,14 @@ function wrOrient(S){
 // c: { x, y (shaped stick, -70..70), thr (A/Z), slide (R) }, power 0..5
 function wrFrameBegin(S, c, power){
   S.B5E = c.x; S.B5F = c.y; S.C66 = c.thr ? 1 : 0; S.fc++;
+  // the throttle's press and release edges (they hurry the climb back on), then the rider's states: thrown off, in
+  // the water and the first 56 frames of climbing back on take the stick and the throttle away (func_80061184)
+  S.thrEdge = (c.thr ? 1 : 0) !== S.thrRaw ? 1 : 0; S.thrRaw = c.thr ? 1 : 0;
+  if (S.t1608 > 0 || S.rs === RS.SWIM || (S.rs === RS.CLIMB && S.c58 < 56)){ S.B5E = 0; S.B5F = 0; S.C66 = 0; }
+  // B (crouch, func_80063C88): pressed while riding, the rider drops into a crouch that loads the hull (gravity up
+  // to x1.75, easing back over 10 frames while B is held)
+  if (c.b && !S.btnB && S.rs === RS.RIDE && !S.t1608 && S.k15D8 === 1) S.k15D8 = 0.9;
+  S.btnB = c.b ? 1 : 0;
   // stunts (func_80061184 + func_80063C88): when the stick last sat past 15 each way, then a snap to full the other way
   // within 3 frames while airborne above 60 km/h on the throttle starts a trick: a barrel roll either way (1, 2),
   // a dive (3: buoyancy nearly off, the nose goes under) or a flip (4). It lasts while the stick is held there
@@ -1092,12 +1123,15 @@ function wrFrameBegin(S, c, power){
   else if (S.trick === 3){ if (S.wetCount >= 8 && ++S.k15C8 > 30) S.trick = 0; if (S.B5F < 70) S.trick = 0; }
   else if (S.trick === 4){ if (S.B5F >= -69) S.trick = 0; else S.B5F = 0; }
   S.B60 += clamp(S.B5E - S.B60, -15, 15);                                  // display lean, slews 15/frame (D_800D49DC)
-  S.thrMul = 1;                                                             // unk1578
+  S.thrMul = S.rs === RS.STAGGER ? 0.3 : 1;                                 // unk1578 (x 0.3 while staggering)
   S.dt = 0.992;                                                             // D_800D4AC4 (0.973 only on Drake Lake's mud)
   if (c.slide) S.kLat = S.k15E8*0.2 + 0.8;                                  // R held: the hull lets go sideways
-  else S.kLat += clamp(S.k15E8 - S.kLat, -0.01, 0.01);
-  S.k1590 = S.k1594;
+  else if (S.m1602){                                                        // falling off: the hull slides free; a wobble: less grip
+    S.kLat = S.m1602 === 1 ? 0.999 : (1 - S.k15E8)*0.6 + S.k15E8; S.k1590 = S.k1594*0.01; }   // D_800D4938
+  else { S.kLat += clamp(S.k15E8 - S.kLat, -0.01, 0.01); S.k1590 = S.k1594; }
   S.grav = -0.192*(S.r === 1 && !S.wetAny ? 1.2 : S.r === 2 && !S.wetAny ? 0.9 : 1);        // D_800D4AC0
+  if (S.rs === RS.SWIM) S.grav *= 0.7;                                      // no rider aboard
+  if (S.k15D8 < 1) S.grav *= (1 - S.k15D8)*7.5 + 1;                         // the crouch
   S.steerMax = S.B90 >= S.s1580 ? S.bb8 : ((1 - S.B90/S.s1580)*S.s1584 + 1)*S.bb8;       // unk1588
   S.B9C = power/5*S.boost;
   if (S.wetCount === 12) S.thrMul *= 0.45;                                  // D_800D49C0: jet buried
@@ -1114,7 +1148,7 @@ function wrFrameBegin(S, c, power){
   // the water level the hull floats on: +3 units once it is up to speed; heavier riders sit lower (unk15D4)
   S.level = (hs < 33.333336 ? 3*hs/33.333336 : 3) + (S.r === 1 ? -5 : S.r === 2 ? 2 : 0);
   S.BE4 = S.cen.slice();
-  S.hit = 0; S.bump = 0;
+  S.hit = 0; S.bump = 0; S.C38 = S.C3C = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0];   // this frame's impacts (unkC38..C50)
 }
 // one of the 5 sub-steps (func_80064C0C). water(x, z, out): out[0] = surface height, out[1..2] = slope, in units.
 // walls: wrWalls(); probes(S): obstacle hook (buoys and gate posts), called where the game checks them.
@@ -1244,6 +1278,78 @@ function wrFrameEnd(S){
   const was = S.wetAny; S.wetCount = wc; S.wetAny = wc ? 1 : 0;
   S.landed = S.wetAny && !was; S.tookOff = was && !S.wetAny;
 }
+// The rider (func_8005DE24's state machine: the part a race needs), once a frame after the physics. The collision
+// code records the hardest closing speed this frame (units per sub-step) per kind of obstacle: buoys (unkC38), gate
+// pylons and marker buoys (unkC3C), walls (unkC44, S.hit), boxes and ramps (unkC48), props (unkC50).
+// - Thrown off: above 40 km/h a hit past the machine's limit, or touching the water rolled past ~65 deg (a botched
+//   landing). Five frames with the controls dead and the hull let loose (it shoots on at 1.5 x its speed, sliding
+//   free), then the rider is in the water (state 0x17) until the hull settles or 1.25 s pass, then climbs back on
+//   (state 7): 77 frames, the controls back from frame 56, each press or release of the throttle skipping a frame.
+// - A smaller knock above 40 km/h: a stagger (state 0x18), thrust x 0.3 until 2 s pass, or 0.55 s if the throttle
+//   is let go or the craft is slow; then 1 s finding the balance again.
+// - A light buoy knock, or riding the water rolled past ~60 deg: a wobble, less grip for up to 26 frames; still
+//   rolled over by then, a stagger.
+function wrRiderFrame(S, water){
+  const C = WR.CRASH, r = S.r, fast = S.B90 > 22.222223;
+  if (S.k15D8 < 1) S.k15D8 = S.btnB ? Math.min(1, S.k15D8 + 0.01) : 1;
+  if (S.t1608 > 0){
+    if (--S.t1608 === 0){ S.rs = RS.SWIM; S.c74 = -1; S.falls++; wrRiderLaunch(S); }
+  } else if (S.t16E0 > 0){
+    if (--S.t16E0 === 0 || S.trick){ S.t16E0 = 0; S.m1602 = 0; S.rs = RS.STAGGER; S.c1574 = 0; }
+    else if (S.up[1] > C.wobUp[r]){ S.t16E0 = 0; S.m1602 = 0; }
+  } else if (S.rs !== RS.CLIMB && S.rs !== RS.SWIM &&
+      ((fast && (S.C38 > C.offBuoy[r] || S.C50 > C.offBuoy[r] || S.C3C > C.offPylon[r] || S.hit > C.offWall[r] || S.C48 > C.offBox[r]))
+       || (S.wetCount > 0 && S.wetCount < 8 && S.up[1] < C.offUp[r]))){
+    S.t1608 = 5;                                                               // D_800D497C
+    if (!S.thrown){                                                            // unk160A
+      const n = S.n15B4, V = S.V;
+      for (let i=0;i<12;i++){
+        S.w[i] = 0.999; const d = -(n[0]*V[i*3] + n[1]*V[i*3+1] + n[2]*V[i*3+2]);
+        V[i*3] = V[i*3]*1.5 + d*n[0]; V[i*3+1] = V[i*3+1]*1.5 + d*n[1]; V[i*3+2] = V[i*3+2]*1.5 + d*n[2];
+      }
+      S.thrown = 1;
+    }
+    if (!S.m1602) S.m1602 = 1;
+  } else if (S.rs === RS.RIDE){
+    if (fast && (S.C50 > C.kn9360[r] || S.C3C > C.knPylon[r] || S.hit > C.knWall[r] || S.C48 > C.knBox[r])) S.t16E0 = 1;
+    else if ((fast && S.C38 > C.kn9360[r]) || (S.wetAny && S.up[1] < C.wobUp[r])){ S.t16E0 = 26; if (!S.m1602) S.m1602 = 2; }   // D_800D4980
+  } else if (S.rs === RS.STAGGER){
+    if ((S.wetAny || S.C48) && (++S.c1574 >= 41 || (S.c1574 >= 11 && (!S.C66 || S.B90 < 11.111112)))){
+      S.rs = RS.CLIMB; S.c58 = 57; S.k157C = 1; }                              // only the end of the climb: finding the balance
+  } else if (S.rs === RS.SWIM){
+    if (S.c74 < 0){ if (S.rb.wet) S.c74 = 0; }                                 // once the rider is in the water
+    else if ((S.c74 += 4) >= 100 || (S.c74 >= 10 && S.wetCount >= 8 && S.up[1] > 0.9 && S.B90 < 8.333334)){   // D_800D4994, D_800D4990
+      S.rs = RS.CLIMB; S.c58 = 0; S.k157C = 0; S.m1602 = 0;
+      if (S.up[1] < 0.5) wrPlace(S, S.cen[0], S.cen[2], Math.atan2(S.fwd[0], S.fwd[2]), true);   // a capsized hull is turned back over first
+    }
+  }
+  if (S.rs === RS.CLIMB){                                                      // the climbing animation's frames
+    let f = S.c58 + 1;
+    if (f >= 77) S.rs = RS.RIDE;                                               // 0x4D
+    else if (f >= 56 && S.thrown){ S.w.set(S.w0); S.thrown = 0; }              // 0x38: the hull's weights back
+    if (!S.k157C && S.thrEdge) f++;
+    S.c58 = f;
+  }
+  // the rider's body once off: thrown clear, then floating at the surface (units, once a frame; drawn interpolated)
+  const B = S.rb; B.pp = B.p.slice();
+  if (S.rs === RS.SWIM || (S.rs === RS.CLIMB && !S.k157C && S.c58 < 40)){
+    const w = _wrW; water(B.p[0], B.p[2], w); const lvl = w[0] - 7;              // afloat in the life vest: hips 18 cm down
+    B.v[1] -= 0.98;                                                            // 9.8 m/s2 in units per frame squared
+    if (B.p[1] < w[0]) B.wet = 1;
+    if (B.p[1] < lvl){ B.v[1] = B.v[1]*0.5 + (lvl - B.p[1])*0.25; B.v[0] *= 0.82; B.v[2] *= 0.82; }
+    for (let k=0;k<3;k++) B.p[k] += B.v[k];
+    B.t++; if (B.wet) B.tw++;
+  }
+}
+// state 0x17 begins: the body leaves the hull from the rider's hips, keeping 80 % of the craft's motion, kicked up
+// and off to the side the hull leans to (so they land beside it)
+function wrRiderLaunch(S){
+  const B = S.rb, u = S.up, uh = Math.hypot(u[0], u[2]);
+  const sx = uh > 0.15 ? u[0]/uh : S.left[0]*(S.fc & 1 ? 1 : -1), sz = uh > 0.15 ? u[2]/uh : S.left[2]*(S.fc & 1 ? 1 : -1);
+  B.p = [S.cen[0] + u[0]*34, S.cen[1] + u[1]*34, S.cen[2] + u[2]*34]; B.pp = B.p.slice();
+  B.v = [S.B78[0]*0.8 + sx*3.5, Math.max(S.B78[1], 0) + 6, S.B78[2]*0.8 + sz*3.5]; B.wet = 0; B.t = 0; B.tw = 0;
+  const h = Math.hypot(S.B78[0], S.B78[2]); B.hd = h > 2 ? [S.B78[0]/h, S.B78[2]/h] : (() => { const l = Math.hypot(S.fwd[0], S.fwd[2]) || 1; return [S.fwd[0]/l, S.fwd[2]/l]; })();
+}
 // course walls: line segments { x, z, nx, nz (towards the water), tx, tz, length } bucketed on a grid
 function wrWalls(list){
   const CELL = 512, map = new Map(), key = (i, j) => i*65536 + j;
@@ -1266,7 +1372,7 @@ function wrWallsCollide(S, Wl){
       const f2 = (ax - px)*nx + (az - pz)*nz; if (!(f2 > 0 && f2 < 16)) continue;
       const f0 = (px - ax)*tx + (pz - az)*tz; if (!(f0 > 0 && f0 < L)) continue;
       const vn = -V[i*3]*nx - V[i*3+2]*nz; if (!(vn > 0)) continue;
-      S.hit = Math.max(S.hit, vn);
+      if (vn > S.hit){ S.hit = vn; S.n15B4 = [nx, 0, nz]; }
       V[i*3] += vn*nx; V[i*3+2] += vn*nz;
       for (let k=0;k<12;k++){ P[k*3] += nx*f2; P[k*3+2] += nz*f2; }
     }
@@ -2934,6 +3040,7 @@ function buildRiderStand(pose, hideHead){
   mbCapsule(m, add(barC, sc(barX, -0.26)), add(barC, sc(barX, 0.26)), 0.016, 0.016, COL.metal, 8, 2);
   mbCapsule(m, add(add(barC, sc(barX, -0.12)), sc(pup, 0.03)), add(add(barC, sc(barX, 0.12)), sc(pup, 0.03)), 0.03, 0.03, COL.rubber, 8, 2);
   for (const g of [gL, gR]) mbCapsule(m, add(g, sc(barX, -0.06)), add(g, sc(barX, 0.06)), 0.022, 0.022, COL.rubber, 8, 2);
+  const bodyStart = m.p.length;                       // the rider from here on (pose.off moves it off the ski)
   // ---- rider: staggered stance in the tray, knees bent, torso over the bar, leaning into turns about the feet ----
   const fy = hullSection(0.3)[8][1] + 0.024;
   const lean = pose.lean, cl = Math.cos(lean), sl = Math.sin(lean);
@@ -2961,7 +3068,14 @@ function buildRiderStand(pose, hideHead){
   mbCapsule(m, add(chest, add(sc(side,-0.10), sc(fwdB, 0.10))), add(chest, add(sc(side,0.10), sc(fwdB, 0.10))), 0.07, 0.07, COL.vestDark, 10, 2);
   mbCapsule(m, add(shL, sc(side,0.04)), add(shR, sc(side,-0.04)), 0.085, 0.085, COL.vest, 10, 3);
   // arms: bare, gloved hands on the grips
-  for (const [sh, g, sx] of [[shL, gL, -1], [shR, gR, 1]]){
+  for (const [sh, g0, sx] of [[shL, gL, -1], [shR, gR, 1]]){
+    let g = g0;
+    if (pose.free > 0){                               // hands off the bar: thrown out for balance (1) or swimming (2)
+      const ph = pose.handT*(pose.handMode === 2 ? 4.2 : 11) + (sx > 0 ? Math.PI : 0), a = Math.cos(ph), b = Math.sin(ph);
+      const fh = pose.handMode === 2 ? add(sh, add(sc(fwdB, 0.3 + 0.25*a), add(sc(up, 0.05 + 0.22*b), sc(side, 0.12*sx))))
+                                     : add(sh, add(sc(side, (0.36 + 0.06*b)*sx), add(sc(up, 0.26 + 0.1*a), sc(fwdB, 0.08))));
+      g = add(g0, sc(sub(fh, g0), pose.free));
+    }
     const elbow = ik2(sh, g, 0.31, 0.31, add(sc(side, 0.9*sx), [0, -0.5, 0.4]));
     mbCapsule(m, sh, elbow, 0.064, 0.052, COL.skin, 10, 3);
     mbCapsule(m, elbow, g, 0.05, 0.042, COL.skin, 10, 3);
@@ -2972,6 +3086,9 @@ function buildRiderStand(pose, hideHead){
     const H = (x,y,z) => add(head, add(sc(side,x), add(sc(hUp,y), sc(hF,z))));               // helmet frame (z = forward)
     mbHelmet(m, p => H(p[0], p[1], p[2]));
   }
+  if (pose.off){ const { M, o } = pose.off, P = m.p;     // the body somewhere off the ski (still in the ski's model space)
+    for (let v = bodyStart; v < P.length; v += 3){ const x = P[v], y = P[v+1], z = P[v+2];
+      P[v] = M[0]*x + M[1]*y + M[2]*z + o[0]; P[v+1] = M[3]*x + M[4]*y + M[5]*z + o[1]; P[v+2] = M[6]*x + M[7]*y + M[8]*z + o[2]; } }
   return { geo: mbFinish(m), head, chest, un: up };
 }
 // ---- the original sit-down cruiser and its seated rider ----
@@ -3711,7 +3828,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -4050,7 +4167,7 @@ function ttBoxesCollide(S){
       if (e3 - u < s){ s = e3 - u; n = [-a3[0], -a3[1], -a3[2]]; }
       if (n[1] <= 0 && (i === 1 || i === 8 || i === 11)) continue;
       const vn = -n[0]*V[i*3] - n[1]*V[i*3+1] - n[2]*V[i*3+2];
-      S.rampHit = Math.max(S.rampHit || 0, B.ramp ? 0.4*vn : vn);
+      const hv = B.ramp ? 0.4*vn : vn; if (hv > S.C48){ S.C48 = hv; S.n15B4 = n.slice(); }   // unkC48
       V[i*3] += vn*n[0]; V[i*3+1] += vn*n[1]; V[i*3+2] += vn*n[2];
       for (let k=0;k<12;k++){ P[k*3] += n[0]*s; P[k*3+1] += n[1]*s; P[k*3+2] += n[2]*s; }
     }
@@ -4229,15 +4346,20 @@ function ttProbes(S){
   const probes = [[27, [4,5,3]], [-9, [11,10,9]]];
   for (const [o, pts] of probes){
     const px = c[0] + 2*u[0] + o*f[0], py = c[1] + 2*u[1] + o*f[1], pz = c[2] + 2*u[2] + o*f[2];
-    const push = (nx, ny, nz, k) => { for (const i of pts){ V[i*3] += nx*k; V[i*3+1] += ny*k; V[i*3+2] += nz*k; } S.bump = Math.max(S.bump, k); };
+    let ch = 'C3C';                                                          // which impact this push records
+    const push = (nx, ny, nz, k) => {
+      const i0 = pts[0], cv = -(nx*V[i0*3] + ny*V[i0*3+1] + nz*V[i0*3+2]);   // closing speed, before the push
+      if (cv > S[ch]){ S[ch] = cv; S.n15B4 = [nx, ny, nz]; }
+      for (const i of pts){ V[i*3] += nx*k; V[i*3+1] += ny*k; V[i*3+2] += nz*k; } S.bump = Math.max(S.bump, k); };
     for (const m of TT.marks){
       const dx = px - m[0], dy = py, dz = pz - m[1], d2 = dx*dx + dy*dy + dz*dz;
       if (d2 < 1369){ const d = Math.sqrt(d2) || 1; push(dx/d, dy/d, dz/d, 37 - d); }
     }
-    ttPropsCollide(px, py, pz, push);
+    ch = 'C50'; ttPropsCollide(px, py, pz, push);
     const L = TT.R.route.list;
     hit: for (let i = L.length - 1; i >= 0; i--){
       const b = L[i];
+      ch = b.gate ? 'C3C' : 'C38';
       if (!b.gate){
         if (!b.buoy) continue;
         let dx = px - b.x, dy = py - b.y, dz = pz - b.z; const d2 = dx*dx + dy*dy + dz*dz;
@@ -4395,29 +4517,93 @@ function ttStop(){
   ski = makeSki(); ski.reset(SPAWN[0], SPAWN[1], 0, ocean); cam.init = false;
 }
 
-// ---- controls: the N64 pad. Stick x steers, stick y leans fore/aft (up = forward), A/Z throttle, R slide ----
+// ---- controls: the N64 pad. Stick x steers, stick y leans fore/aft (up = forward), A/Z throttle, R slide, B crouch ----
 function ttInput(dt){
   const k = c => keys.has(c);
-  let thr = k('KeyW') || k('ArrowUp') || k('Space'), slide = k('ShiftLeft') || k('ShiftRight');
+  let thr = k('KeyW') || k('ArrowUp') || k('Space'), slide = k('ShiftLeft') || k('ShiftRight'), b = k('KeyE');
   let sx = ((k('KeyD') || k('ArrowRight')) ? 1 : 0) - ((k('KeyA') || k('ArrowLeft')) ? 1 : 0);
-  let sy = (k('KeyQ') ? 1 : 0) - ((k('KeyS') || k('ArrowDown') || k('KeyE')) ? 1 : 0);
-  // keys push a virtual stick that travels 0 -> full in about 1/6 s (taps give small corrections)
-  const st = TT.stick; st[0] += clamp(sx*80 - st[0], -480*dt, 480*dt); st[1] += clamp(sy*80 - st[1], -480*dt, 480*dt);
+  let sy = (k('KeyQ') ? 1 : 0) - ((k('KeyS') || k('ArrowDown')) ? 1 : 0);
+  // keys push a virtual stick: out to full in 1/8 s (a tap gives a small correction), back to the centre in 1/20 s
+  // like a stick springing back, and when the other key goes down, flicked straight across in 1/25 s the way a
+  // thumb flicks a stick, so the game's stunt flicks (full the other way within 2 frames) work from the keyboard
+  const st = TT.stick, fl = TT.flick || (TT.flick = [9, 9]);
+  for (const [i, v] of [[0, sx], [1, sy]]){
+    if (v && st[i]*v < 0){ st[i] = 0; fl[i] = 0; } else fl[i] += dt;
+    const rate = !v ? 1600 : fl[i] < 0.15 ? 2000 : 640;
+    st[i] += clamp(v*80 - st[i], -rate*dt, rate*dt);
+  }
   let px = st[0], py = st[1];
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const bt = (g, i) => !!(g.buttons[i] && g.buttons[i].pressed);
   for (const g of pads){ if (!g) continue;
     const ax = g.axes[0] || 0, ay = g.axes[1] || 0, dz = v => Math.abs(v) < 0.08 ? 0 : v;
     if (dz(ax) || dz(ay)){ px = dz(ax)*80; py = -dz(ay)*80; }
-    if ((g.buttons[0] && g.buttons[0].pressed) || (g.buttons[7] && g.buttons[7].value > 0.3)) thr = true;
-    if ((g.buttons[5] && g.buttons[5].pressed) || (g.buttons[6] && g.buttons[6].value > 0.3)) slide = true;
-    const y = g.buttons[3] && g.buttons[3].pressed, b = g.buttons[1] && g.buttons[1].pressed;
-    if (y && !inp.padY) cycleCam(); if (b && !inp.padB) ttRestart(); inp.padY = y; inp.padB = b;
+    if (bt(g, 0) || (g.buttons[7] && g.buttons[7].value > 0.3)) thr = true;            // A or the right trigger (the N64's A / Z)
+    if (bt(g, 5) || (g.buttons[6] && g.buttons[6].value > 0.3)) slide = true;           // R: RB or the left trigger
+    if (bt(g, 1)) b = true;                                                              // B, as on the N64 pad
+    const y = bt(g, 3), sel = bt(g, 8), stt = bt(g, 9);
+    if (y && !inp.padY) cycleCam(); if (sel && !inp.padSel) ttRestart();
+    if (stt && !inp.padStart){ if ($start.hidden) showMenu(); else start(); }
+    inp.padY = y; inp.padSel = sel; inp.padStart = stt;
   }
   if (touch.gasId !== null) thr = true;
   if (touch.steerId !== null){ px = touch.steer*80; py = touch.sy*80; }
   if (touch.slideId !== null) slide = true;
-  if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; }
-  TT.pad = { x: px, y: py, thr, slide };
+  if (touch.crouchId !== null) b = true;
+  if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; b = false; }
+  TT.pad = { x: px, y: py, thr, slide, b };
+}
+// The rider's falls, drawn from the game's states: losing the balance (the 5 frames before the fall), thrown clear and
+// floating, swimming back to the stern and climbing on (state 7, frames 0-56), standing back up, staggering (0x18),
+// wobbling, crouching (B). Off the ski the body is placed in the world and handed to buildRiderStand in the ski's
+// model space (pose.off), so the pole stays with the ski.
+const RIDER_HIPS = [0.01, 0.9, 0.6];                   // where the body pivots: the hips on the ski (model space)
+function ttRiderPose(pose){
+  const S = TT.S, U = WR.U, R = ski.R, fr = clamp((TT.k + TT.acc/0.01)/WR.SUB, 0, 1), t = tSim;
+  const mix3 = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k, a[2] + (b[2] - a[2])*k];
+  pose.free = 0; pose.handMode = 0; pose.handT = t; pose.off = null;
+  if (S.k15D8 < 1) pose.crouch = Math.max(pose.crouch, (1 - S.k15D8)*10);
+  if (S.t1608 > 0){ pose.free = 0.85; pose.handMode = 1; pose.crouch = 0.5; pose.lean += 0.3*Math.sin(t*17); pose.steer = 0; return; }
+  TT.wob = (TT.wob || 0) + ((S.rs === RS.RIDE && S.t16E0 > 0 ? 1 : 0) - (TT.wob || 0))*Math.min(1, ttRiderPose.dt*5);
+  if (S.rs === RS.RIDE){
+    const w = TT.wob; pose.lean += 0.22*w*Math.sin(t*13); pose.crouch = Math.max(pose.crouch, 0.35*w); pose.free = 0.25*w; pose.handMode = 1;
+    return;
+  }
+  if (S.rs === RS.STAGGER){ pose.lean += 0.38*Math.sin(t*9.5); pose.crouch = Math.max(pose.crouch, 0.55); pose.free = 0.4; pose.handMode = 1; return; }
+  const c = S.c58 + (S.rs === RS.CLIMB ? fr : 0);
+  if (S.rs === RS.CLIMB && (S.k157C || c >= 56)){
+    pose.crouch = Math.max(pose.crouch, S.k157C ? 0.6*(1 - smoothstep(57, 76, c)) : 1 - smoothstep(56, 76, c)); return; }
+  // off the ski: the body's hips and axes in the world
+  const B = S.rb, rbW = [TT.ox + (B.pp[0] + (B.p[0] - B.pp[0])*fr)/U, (B.pp[1] + (B.p[1] - B.pp[1])*fr)/U, TT.oz + (B.pp[2] + (B.p[2] - B.pp[2])*fr)/U];
+  const toW = p => [ski.p[0] + R[0]*p[0] + R[1]*p[1] + R[2]*p[2], ski.p[1] + R[3]*p[0] + R[4]*p[1] + R[5]*p[2], ski.p[2] + R[6]*p[0] + R[7]*p[1] + R[8]*p[2]];
+  const skiUp = [R[1], R[4], R[7]], skiFwd = [-R[2], -R[5], -R[8]], hl0 = Math.hypot(skiFwd[0], skiFwd[2]) || 1, hf = [skiFwd[0]/hl0, 0, skiFwd[2]/hl0];
+  const lying = (h, phi) => [[Math.sin(phi)*h[0], Math.cos(phi), Math.sin(phi)*h[2]], [Math.cos(phi)*h[0], -Math.sin(phi), Math.cos(phi)*h[2]]];
+  let O, up, fwd;
+  if (S.rs === RS.SWIM){                               // leaving the ski (blended from the riding pose), then floating
+    const ka = Math.min(1, (B.t + fr)/7), kw = B.wet ? smoothstep(0, 6, B.tw + fr) : 0;
+    const [uL, fL] = lying([B.hd[0], 0, B.hd[1]], (0.45*ka + 0.6*Math.sin(ka*Math.PI))*(1 - kw) + (-0.5 + 0.05*Math.sin(t*2.3))*kw);
+    const k0 = smoothstep(0, 4, B.t + fr);
+    O = mix3(toW(RIDER_HIPS), rbW, k0); up = norm3(mix3(skiUp, uL, k0)); fwd = norm3(mix3(skiFwd, fL, k0));
+    pose.free = 1; pose.handMode = B.wet ? 2 : 1; pose.crouch = 0.2;
+  } else {                                             // climbing back on: swim to the stern, then up onto the deck
+    const stern = toW([0, 0.25, 1.75]); waterSurface(ocean, stern[0], stern[2], _ttw); stern[1] = Math.min(stern[1], _ttw[0] - 0.15);
+    let h = [stern[0] - rbW[0], 0, stern[2] - rbW[2]]; const hl = Math.hypot(h[0], h[2]);
+    h = hl > 0.3 ? [h[0]/hl, 0, h[2]/hl] : hf; h = norm3(mix3(h, hf, smoothstep(18, 30, c)));
+    O = mix3(mix3(rbW, stern, smoothstep(0, 30, c)), toW(RIDER_HIPS), smoothstep(30, 52, c));
+    const [u1, f1] = lying(h, -0.5 + 0.25*smoothstep(0, 20, c)), k = smoothstep(30, 54, c);
+    up = norm3(mix3(u1, skiUp, k)); fwd = norm3(mix3(f1, skiFwd, k));
+    pose.free = 1 - smoothstep(40, 52, c); pose.handMode = 2; pose.crouch = 1;
+  }
+  // body axes: x right, y up, z back (orthonormal), then M = R^T [bx by bz], o = R^T (O - ski.p) - M hips
+  const by = norm3(up), d = fwd[0]*by[0] + fwd[1]*by[1] + fwd[2]*by[2];
+  const bz = norm3([-(fwd[0] - d*by[0]), -(fwd[1] - d*by[1]), -(fwd[2] - d*by[2])]);
+  const bx = [by[1]*bz[2] - by[2]*bz[1], by[2]*bz[0] - by[0]*bz[2], by[0]*bz[1] - by[1]*bz[0]], b = [bx, by, bz];
+  const M = new Array(9), o = [0, 0, 0], dO = [O[0] - ski.p[0], O[1] - ski.p[1], O[2] - ski.p[2]];
+  for (let i=0;i<3;i++){
+    for (let j=0;j<3;j++) M[i*3+j] = R[i]*b[j][0] + R[3+i]*b[j][1] + R[6+i]*b[j][2];
+    o[i] = R[i]*dO[0] + R[3+i]*dO[1] + R[6+i]*dO[2] - (M[i*3]*RIDER_HIPS[0] + M[i*3+1]*RIDER_HIPS[1] + M[i*3+2]*RIDER_HIPS[2]);
+  }
+  pose.off = { M, o }; pose.steer = 0; pose.lean = 0;
 }
 // ?auto: aim a few metres beside the next buoy, on the side it must be passed
 function ttAutopilot(){
@@ -4449,12 +4635,27 @@ function ttFrameBegin(){
   const p = TT.pad || { x:0, y:0, thr:false, slide:false };
   const [sx, sy] = wrStick(p.x, p.y);
   TT.slide = racing && p.slide;
-  wrFrameBegin(TT.S, racing ? { x: sx, y: sy, thr: p.thr, slide: p.slide } : { x:0, y:0, thr:false, slide:false }, TT.R.power);
+  wrFrameBegin(TT.S, racing ? { x: sx, y: sy, thr: p.thr, slide: p.slide, b: p.b } : { x:0, y:0, thr:false, slide:false, b:false }, TT.R.power);
   ttBuoysFrame(); ttPropsFrame();
+}
+// a fall's sounds and splash: the knock when the rider is thrown, the splash where they land in the water
+function ttRiderFx(S){
+  if (S.t1608 === 5) splashSound(1);
+  if (S.rb.wet && !TT.rbSplash){
+    TT.rbSplash = 1;
+    const X = TT.ox + S.rb.p[0]/WR.U, Z = TT.oz + S.rb.p[2]/WR.U; waterSurface(ocean, X, Z, _ttw); const h = _ttw[0];
+    for (let i=0;i<140;i++){ const mist = Math.random() < 0.15, a = Math.random()*6.283, r = 0.6 + 2.2*Math.random();   // mostly droplets: the mist would hide the rider
+      emit(X + Math.cos(a)*0.3, h + 0.05, Z + Math.sin(a)*0.3, Math.cos(a)*r, 2 + 4.5*Math.random(), Math.sin(a)*r,
+           mist ? 0.7 + 0.5*Math.random() : 0.6 + 0.6*Math.random(), mist ? 0.25 + 0.25*Math.random() : 0.03 + 0.05*Math.random(), mist ? 1 : 0, mist ? 0.2 : 0.9); }
+    slam.ring = { x: X, z: Z, t: 0, V: 4, str: 0.6 };
+    splashSound(0.8);
+  }
+  if (!S.rb.wet) TT.rbSplash = 0;
 }
 function ttFrameEnd(){
   const S = TT.S, R = TT.R;
-  wrFrameEnd(S);
+  wrFrameEnd(S); wrRiderFrame(S, ttWater);
+  ttRiderFx(S);
   TT.frame++;
   if (TT.phase === 'countdown'){                   // 3, 2, 1, GO at one per second
     const f = TT.cd++;
@@ -4476,7 +4677,7 @@ function ttFrameEnd(){
   if (S.tricks !== TT.tricks0){ TT.tricks0 = S.tricks; $air.textContent = ['', 'BARREL ROLL', 'BARREL ROLL', 'DIVE', 'FLIP'][S.trick] || ''; $air.classList.add('on'); airShown = 1.2; }
   if (S.wetCount === 0) ski.airT += 0.05; else { if (ski.airT > 0) ski.lastAir = ski.airT; ski.airT = 0; }
   TT.upside = S.up[1] < 0.1 ? (TT.upside || 0) + 1 : 0;
-  if (TT.upside > 30){ TT.upside = 0; wrPlace(S, S.cen[0], S.cen[2], Math.atan2(S.fwd[0], S.fwd[2])); }
+  if (TT.upside > 30){ TT.upside = 0; wrPlace(S, S.cen[0], S.cen[2], Math.atan2(S.fwd[0], S.fwd[2]), true); }
   // the game's water frame: source ahead of the camera, swell trains, the solver
   { const B = cam.B; let fx = 0, fz = 1, cx = S.cen[0], cz = S.cen[2], ahead = 300;
     if (B){ const h = Math.hypot(B.f[0], B.f[2]) || 1; fx = B.f[0]/h; fz = B.f[2]/h; cx = (B.pos[0] - TT.ox)*WR.U; cz = (B.pos[2] - TT.oz)*WR.U;
@@ -4701,6 +4902,7 @@ document.getElementById('bMenu').addEventListener('click', e => { e.stopPropagat
 function setSeaState(i, quiet){ ocean.setSea(i); if (!quiet) flash('Sea state: ' + SEAS[i].name); $bSea.textContent = 'Sea: ' + SEAS[i].name; }
 $bSea.addEventListener('click', e => { e.stopPropagation(); start(); setSeaState((ocean.sea + 1) % SEAS.length); });
 document.getElementById('bCam').addEventListener('click', e => { e.stopPropagation(); start(); cycleCam(); });
+document.getElementById('bRestart').addEventListener('click', e => { e.stopPropagation(); if (TT.on){ $ttRes.hidden = true; ttRestart(); } });
 const $bFlip = document.getElementById('bFlip');
 $bFlip.addEventListener('click', e => { e.stopPropagation(); if (TT.on) ttRestart(); else resetSki(); capsizeT = 0; $bFlip.classList.remove('show'); });
 function cycleCam(){ camMode = (camMode+1)%2; flash(camMode ? 'First person' : 'Chase camera', 1.2); cam.init = false; }
@@ -4726,8 +4928,8 @@ canvas2.addEventListener('pointerup', endPtr); canvas2.addEventListener('pointer
 canvas2.addEventListener('wheel', e => { cam.dist = clamp(cam.dist*Math.exp(e.deltaY*0.001), 3.5, 18); e.preventDefault(); }, { passive:false });
 // touch: a 360-degree stick on the left (it centres where the thumb lands: x steers, y leans / trims), the throttle
 // pad on the right, and in Time Trial a SLIDE pad (the N64's R)
-const touch = { steerId:null, ox:0, oy:0, steer:0, sy:0, gasId:null, slideId:null };
-const $tpad = document.querySelector('#touch .l'), $tknob = document.querySelector('#touch .l i'), $tgas = document.querySelector('#touch .r'), $tslide = document.querySelector('#touch .s');
+const touch = { steerId:null, ox:0, oy:0, steer:0, sy:0, gasId:null, slideId:null, crouchId:null };
+const $tpad = document.querySelector('#touch .l'), $tknob = document.querySelector('#touch .l i'), $tgas = document.querySelector('#touch .r'), $tslide = document.querySelector('#touch .s'), $tcrouch = document.querySelector('#touch .c');
 const TSTICK = 55;                                           // pixels from the centre to full lock
 const hasTouch = 'ontouchstart' in window;
 if (hasTouch){ document.getElementById('touch').style.display = 'block'; document.body.classList.add('touch'); }
@@ -4736,6 +4938,8 @@ function touchCtl(e, down){
   if (down){
     if (TT.on && $tslide.offsetParent){ const r = $tslide.getBoundingClientRect();
       if (Math.hypot(e.clientX - (r.left + r.right)/2, e.clientY - (r.top + r.bottom)/2) < r.width*0.75){ touch.slideId = e.pointerId; $tslide.classList.add('hold'); start(); return true; } }
+    if (TT.on && $tcrouch.offsetParent){ const r = $tcrouch.getBoundingClientRect();
+      if (Math.hypot(e.clientX - (r.left + r.right)/2, e.clientY - (r.top + r.bottom)/2) < r.width*0.7){ touch.crouchId = e.pointerId; $tcrouch.classList.add('hold'); start(); return true; } }
     if (e.clientX < innerWidth*0.45 && e.clientY > innerHeight*0.4){
       touch.steerId = e.pointerId; touch.ox = e.clientX; touch.oy = e.clientY; touch.steer = touch.sy = 0;
       $tpad.style.left = (e.clientX - 60) + 'px'; $tpad.style.bottom = (innerHeight - e.clientY - 60) + 'px'; $tpad.classList.add('on');
@@ -4749,12 +4953,13 @@ function touchCtl(e, down){
     touch.steer = dx/TSTICK; touch.sy = -dy/TSTICK;                      // up the screen = stick forward
     $tknob.style.transform = `translate(${dx}px, ${dy}px)`; return true;
   }
-  return e.pointerId === touch.gasId || e.pointerId === touch.slideId;
+  return e.pointerId === touch.gasId || e.pointerId === touch.slideId || e.pointerId === touch.crouchId;
 }
 function touchEnd(e){
   if (e.pointerId === touch.steerId){ touch.steerId = null; touch.steer = touch.sy = 0; $tknob.style.transform = ''; $tpad.classList.remove('on'); $tpad.style.left = ''; $tpad.style.bottom = ''; }
   if (e.pointerId === touch.gasId){ touch.gasId = null; $tgas.classList.remove('hold'); }
   if (e.pointerId === touch.slideId){ touch.slideId = null; $tslide.classList.remove('hold'); }
+  if (e.pointerId === touch.crouchId){ touch.crouchId = null; $tcrouch.classList.remove('hold'); }
 }
 
 const inp = { thr:0, brk:0, steer:0, stand:0, padY:false, padB:false };
@@ -5225,8 +5430,9 @@ function frame(now){
     ? { steer: ski.steer, lean: ski.steer*(0.12 + 0.28*spdF) + ski.stand*0.1*ski.steer, stand: ski.stand, crouch: Math.min(1, crouch), fwd: clamp(ski.thr*spdF, 0, 1)*0.7 }
     : { steer: ski.steer, lean: ski.capsized ? 0 : ski.steer*(0.14 + 0.36*spdF)*(1 + 0.35*ski.stand), attack: ski.stand, crouch: Math.min(1, crouch) };
   if (TT.on){ const S = TT.S;                    // Time Trial: the game's rider balance (func_8005DE24's filters)
-    pose.steer = S.B5E/70; pose.lean = Math.asin(clamp(20*S.bal/Math.max(S.C0C, 10), -0.8, 0.8));
-    pose.crouch = clamp(Math.max(crouch, 1 - S.C0C/34.11)*1.5, 0, 1); pose.attack = clamp((S.C10 + 27.3)/12, 0, 1); }
+    pose.steer = S.B60/70; pose.lean = Math.asin(clamp(20*S.bal/Math.max(S.C0C, 10), -0.8, 0.8));   // B60: the game's display lean, slewed 15 a frame
+    pose.crouch = clamp(Math.max(crouch, 1 - S.C0C/34.11)*1.5, 0, 1); pose.attack = clamp((S.C10 + 27.3)/12, 0, 1);
+    ttRiderPose.dt = dt; ttRiderPose(pose); }
   const rider = buildRider(pose, camMode === 1);
   riderBuf.set(rider.geo);
   const tc3 = performance.now();

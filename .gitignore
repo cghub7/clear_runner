@@ -4,3 +4,5 @@ __pycache__/
 pebbles.png
 pebbles.jpg
 node_modules/
+.vercel
+.env*

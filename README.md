@@ -2,8 +2,6 @@
 
 Clear Runner is a jetski game with real water physics, in a single HTML file. It is a fork of Clearwater Jetski and keeps all of it as **Free roam**, and adds a **Time Trial** on the eight Wave Race 64 courses, driven by Wave Race 64's own jetski physics and race rules, ported from the decompiled N64 cartridge. It uses WebGL2, with no libraries, no build step and no install, and it runs locally: open `index.html`.
 
-It's built on [Clearwater](https://github.com/Aureliengmz/clearwater), Aurélien's real-time photoreal water renderer.
-
 ![Riding the surf in rough seas](media/jetski.jpg)
 
 ## Play

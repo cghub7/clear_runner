@@ -83,13 +83,13 @@
   #touch { position:fixed; inset:0; z-index:4; display:none; pointer-events:none; }
   #touch .pad { position:absolute; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:120px; height:120px; border-radius:50%;
     border:1.5px solid rgba(255,255,255,.35); background:rgba(10,30,30,.15); }
-  #touch .l { left:24px; } #touch .r { right:24px; bottom:calc(170px + env(safe-area-inset-bottom,0px)); width:96px; height:96px; }
+  #touch .l { left:24px; } #touch .r { right:24px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:96px; height:96px; }
   #touch .r::after { content:"GAS"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:700; opacity:.7; }
   #touch .l { transition:opacity .2s; } #touch .l.on { opacity:1; transition:none; }
   #touch .l i { position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:rgba(255,255,255,.35);
     box-shadow:0 0 0 1.5px rgba(255,255,255,.55); }
   #touch .l::after { content:"STICK"; position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:10px; font-weight:700; letter-spacing:.08em; opacity:.5; }
-  #touch .s { display:none; right:134px; bottom:calc(183px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; }
+  #touch .s { display:none; right:134px; bottom:calc(37px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; }
   body.touch #hud { transform:scale(.72); transform-origin:100% 0; top:calc(10px + env(safe-area-inset-top,0px)); bottom:auto; right:calc(10px + env(safe-area-inset-right,0px)); }
   body.touch #mbtns { top:calc(112px + env(safe-area-inset-top,0px)); flex-direction:column; align-items:flex-end; }
   body.touch.ttmode #tt { transform:scale(.85); transform-origin:0 0; }
@@ -97,7 +97,7 @@
   body.touch #ttCue { bottom:auto; top:calc(34% + env(safe-area-inset-top,0px)); }
   body.touch #ttDir { top:calc(30% + env(safe-area-inset-top,0px)); }
   body.ttmode #bSea { display:none !important; } #bRestart { display:none !important; } body.touch.ttmode #bRestart { display:block !important; }
-  #touch .c { display:none; right:30px; bottom:calc(40px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; } body.ttmode #touch .c { display:block; }
+  #touch .c { display:none; right:37px; bottom:calc(134px + env(safe-area-inset-bottom,0px)); width:70px; height:70px; } body.ttmode #touch .c { display:block; }
   #touch .c::after { content:"CROUCH"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; opacity:.7; }
   body.ttmode #touch .s { display:block; } #touch .pad.hold { background:rgba(90,215,242,.3); }
   #touch .s::after { content:"SLIDE"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; opacity:.7; }
@@ -209,7 +209,7 @@
       <tr><td>Buoys</td><td>Pass <b style="color:#ff8a78">red</b> on its right, <b style="color:#ffe25a">yellow</b> on its left. Each one passed right adds power (5 = max); a miss resets it, 5 misses and you're out</td></tr>
       <tr><td><kbd>R</kbd> · <kbd>C</kbd> · <kbd>H</kbd></td><td>Restart · camera · menu (pauses)</td></tr>
       <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu</td></tr>
-      <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean fore/aft, flick it for stunts · GAS (tap it to climb back on faster) · SLIDE · CROUCH · Restart, Camera and Menu at the top right</td></tr>
+      <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean fore/aft, flick it for stunts · GAS (tap it to climb back on faster) · SLIDE and CROUCH (each with throttle) · Restart, Camera and Menu at the top right</td></tr>
     </table>
     <table id="freeKeys">
       <tr><td><kbd>W</kbd> <kbd>S</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>Throttle / brake &amp; reverse</td></tr>
@@ -3828,7 +3828,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -4548,8 +4548,8 @@ function ttInput(dt){
   }
   if (touch.gasId !== null) thr = true;
   if (touch.steerId !== null){ px = touch.steer*80; py = touch.sy*80; }
-  if (touch.slideId !== null) slide = true;
-  if (touch.crouchId !== null) b = true;
+  if (touch.slideId !== null){ slide = true; thr = true; }        // one thumb can't hold two pads: SLIDE and CROUCH
+  if (touch.crouchId !== null){ b = true; thr = true; }          // throttle too, like holding GAS with them
   if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; b = false; }
   TT.pad = { x: px, y: py, thr, slide, b };
 }

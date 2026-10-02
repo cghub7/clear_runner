@@ -31,7 +31,7 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 | `E` | Crouch (B): the rider drops low and loads the hull |
 | `R` · `C` · `H` | Restart · camera · menu (pauses the race) |
 | Gamepad | Left stick steers and leans, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu |
-| Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, flick for stunts · GAS pad (tap it to climb back on faster after a fall) · SLIDE pad · CROUCH pad · **Restart**, **Camera** and **☰ Menu** buttons at the top right |
+| Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, flick for stunts · GAS pad (tap it to climb back on faster after a fall) · SLIDE and CROUCH pads, which throttle too (one thumb can't hold two pads) · **Restart**, **Camera** and **☰ Menu** buttons at the top right |
 
 ### Free roam
 

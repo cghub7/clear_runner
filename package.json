@@ -1,6 +1,6 @@
 {
   "name": "clear-runner",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "description": "Clear Runner - jetskis on real-time water: free roam, and a Time Trial on the Wave Race 64 courses with Wave Race 64's physics",
   "main": "index.html",

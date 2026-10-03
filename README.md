@@ -33,12 +33,15 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 
 ### Thunder Run
 
-An arcade boost race after Hydro Thunder, on the same Wave Race 64 jetskis and physics: you against five CPU rivals over three laps of Sunny Beach, Sunset Bay, Drake Lake or Glacier Coast (the open courses), with a countdown clock.
+An arcade boost race after Hydro Thunder, on the same Wave Race 64 jetskis and physics: you against seven CPU rivals on **Thunder Canal** (two laps) or three laps of Sunny Beach, Sunset Bay, Drake Lake or Glacier Coast (the open WR64 courses), with a countdown clock.
+
+- **Thunder Canal.** Clear Runner's own course, after Hydro Thunder's Thunder Park: a walled amusement-park canal about 1.5 km round. A grandstand straight with a kicker ramp, a sweeping right onto the **Big Leap** (a ramp across the whole canal: 5 m up and 35 m on, 60 m boosting), a hairpin, a tunnel, a chicane through floating drums, the **Island Lagoon** (round either side; the outside is longer but has a ramp), and the long back straight. Orange boost arrows on the water give a free 1.5 s burst, and red canisters float over each ramp's flight.
 
 - **Boost.** Blue canisters on the water add 4 s of boost, red ones 9 s (the meter holds 18 s). Hold boost to burn it: about 150 km/h instead of 100, and the **Mighty Hull**: while boosting nothing knocks you off, and a rival you ram is thrown aside (sometimes off their jetski).
 - **Hydro Jump.** Double-tap boost on the water: the jetski leaps about 2 m for a second of boost. Some red canisters float high: jump for them.
-- **The clock.** Four checkpoints a lap (arches, and the lap line) top up the countdown; let it run out and the race is over. Open the throttle on the last red light for a boost start.
-- **Rivals.** Razorback, Tidal Fury, Sun Chaser, Jade Viper and Midnight ride the game's four machines with their own tuning, follow a racing line down the course, slide through the tight turns, collect canisters and boost on the straights. They fall off and climb back on like you do, and the ones behind you find a little extra pace. The Layout buttons set how hard they push and how generous the clock is.
+- **The clock.** Four checkpoints a lap (arches, and the lap line) top up the countdown ("TIME EXTENDED!"); let it run out and the race is over. Open the throttle on the last red light for a boost start.
+- **On screen.** Place, lap, the boost meter, the clock, a minimap with every boat on it, flames out of the jet while boosting.
+- **Rivals.** Razorback, Tidal Fury, Sun Chaser, Jade Viper, Midnight, Barracuda and Hot Rod ride the game's four machines with their own tuning, follow a racing line down the course, slide through the tight turns, collect canisters and boost on the straights. They fall off and climb back on like you do, and the ones behind you find a little extra pace. The Layout buttons set how hard they push and how generous the clock is.
 - **Controls.** As in the Time Trial, plus boost: `Space` or `X`, gamepad X or LB, and the BOOST pad on touch screens (it throttles too). Bumping rivals is racing; only a boosting ram, or a really hard hit, knocks a rider. Crashes into walls and bad landings use the Time Trial's fall rules with an arcade allowance.
 
 ### Free roam

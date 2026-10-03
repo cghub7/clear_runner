@@ -3872,7 +3872,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -4056,9 +4056,16 @@ function thCanalCourse(){
   for (let i = 0; i < N; i += 3){ if (cx[i] > 172 && cx[i] < 252 && cz[i] > 80 && cz[i] < 110) tunnel.push([cx[i]*U, cz[i]*U, hd[i], cw[i]*U]); }
   for (let i = 8; i < 150; i += 3) stands.push([cx[i]*U, cz[i]*U, hd[i], cw[i]*U]);
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const w of walls){ x0 = Math.min(x0, w[0]); x1 = Math.max(x1, w[0]); z0 = Math.min(z0, w[1]); z1 = Math.max(z1, w[1]); }
-  return { id: 'canal', name: 'Thunder Canal', laps: 2, wave: 18, margin: 256, startSide: 0, style: 'harbour', thunderOnly: true,
+  // Wave Race 64 swell trains (func_8004CC7C): [x, z, travel dir, crest dir (deg), height, cells per crest, rows, row
+  // spacing, speed, period, window, window, difficulty mask]; one roller every ~5 s down each zone
+  const swells = [
+    [-62*U, -88*U, 180, 90, 60, 22, 30, 64, 32, 6, 0, 1, 0],   // the back straight: big rollers head-on, to launch off
+    [170*U, -178*U, 270, 0, 50, 50, 40, 64, 24, 5, 0, 1, 0],   // the Island Lagoon: swells sweeping across
+    [165*U, 229*U, 270, 0, 35, 22, 20, 64, 28, 4, 0, 1, 0],    // the run-up to the Big Leap: a swell to unsettle the approach
+  ];
+  return { id: 'canal', name: 'Thunder Canal', laps: 3, wave: 18, margin: 256, startSide: 0, style: 'harbour', thunderOnly: true,
     area: [[x0 - 4000, x1 + 4000, z0 - 4000, z1 + 4000]], zones: [[x0 - 4000, x1 + 4000, z0 - 4000, z1 + 4000]],
-    layouts: { normal: route, hard: route, expert: route }, walls, swells: [], marks: [], pink: [], radius: 9000, ramps: [], props,
+    layouts: { normal: route, hard: route, expert: route }, walls, swells, marks: [], pink: [], radius: 9000, ramps: [], props,
     isle: [LG[0]*U, LG[1]*U], bigTop: [-88*U, -55*U], wheel: [18*U, 300*U, Math.PI/2], mid: [150*U, 40*U],   // the wheel faces the start straight
     boxes, cans, pads, tunnel, stands, line: resample(lx, lz, 1.5).map(c => c.map(v => v*U)) };
 }

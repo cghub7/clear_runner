@@ -6,7 +6,7 @@ Clear Runner is a jetski game with real water physics, in a single HTML file. It
 
 ## Play
 
-Open `index.html` in a desktop browser (Chrome, Edge or Firefox) on a computer with a graphics card. It needs WebGL2 with float render targets. Pick **Free roam** or **Time Trial** on the start card, then click or press any key.
+Open `index.html` in a desktop browser (Chrome, Edge or Firefox) on a computer with a graphics card. It needs WebGL2 with float render targets. Pick **Free roam**, **Time Trial** or **Thunder Run** on the start card, then click or press any key.
 
 Graphics has four presets (Low, Medium, High, Ultra): the first run picks one automatically from the frame rate and then sticks with it, and the Graphics button or `G` switches and remembers your choice.
 
@@ -30,6 +30,16 @@ Three laps of a Wave Race 64 course, alone against the clock. Choose the course,
 | `R` · `C` · `H` | Restart · camera · menu (pauses the race) |
 | Gamepad | Left stick steers and leans, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu |
 | Touch | Left stick (appears where your thumb lands, 360°): steer, lean fore/aft, flick for stunts · GAS pad (tap it to climb back on faster after a fall) · SLIDE and CROUCH pads, which throttle too (one thumb can't hold two pads) · **Restart**, **Camera** and **☰ Menu** buttons at the top right |
+
+### Thunder Run
+
+An arcade boost race after Hydro Thunder, on the same Wave Race 64 jetskis and physics: you against five CPU rivals over three laps of Sunny Beach, Sunset Bay, Drake Lake or Glacier Coast (the open courses), with a countdown clock.
+
+- **Boost.** Blue canisters on the water add 4 s of boost, red ones 9 s (the meter holds 18 s). Hold boost to burn it: about 150 km/h instead of 100, and the **Mighty Hull**: while boosting nothing knocks you off, and a rival you ram is thrown aside (sometimes off their jetski).
+- **Hydro Jump.** Double-tap boost on the water: the jetski leaps about 2 m for a second of boost. Some red canisters float high: jump for them.
+- **The clock.** Four checkpoints a lap (arches, and the lap line) top up the countdown; let it run out and the race is over. Open the throttle on the last red light for a boost start.
+- **Rivals.** Razorback, Tidal Fury, Sun Chaser, Jade Viper and Midnight ride the game's four machines with their own tuning, follow a racing line down the course, slide through the tight turns, collect canisters and boost on the straights. They fall off and climb back on like you do, and the ones behind you find a little extra pace. The Layout buttons set how hard they push and how generous the clock is.
+- **Controls.** As in the Time Trial, plus boost: `Space` or `X`, gamepad X or LB, and the BOOST pad on touch screens (it throttles too). Bumping rivals is racing; only a boosting ram, or a really hard hit, knocks a rider. Crashes into walls and bad landings use the Time Trial's fall rules with an arcade allowance.
 
 ### Free roam
 
@@ -89,6 +99,7 @@ Everything in the Time Trial comes from the Wave Race 64 (USA, Rev A) analysis i
 | `?view=wake` / `?view=surf` | Debug maps of the wake and surf height fields |
 | `?craft=sit` / `?craft=stand` | Start on a specific jetski |
 | `?course=sunny` (`sunset`, `fortress`, `drake`, `port`, `twilight`, `glacier`, `southern`) | Time Trial on that course; `&diff=hard`, `&rider=0`–`3` |
+| `?thunder` | Thunder Run (with `&course=`, `&diff=`) |
 | `?auto` | Autopilot (in Time Trial it follows the buoys) |
 | `?water=0`–`3` | Water type |
 | `?scene=0`–`2` | Time of day: day, full moon, retro dusk |

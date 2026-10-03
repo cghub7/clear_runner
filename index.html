@@ -169,6 +169,21 @@
   #ttRes .btns { display:flex; gap:8px; } #ttRes .btns button { flex:1; font:600 14px/1 -apple-system, system-ui, sans-serif; color:var(--ink); border:0; padding:11px; border-radius:999px;
     background:rgba(255,255,255,.16); cursor:pointer; } #ttRes .btns button:first-child { background:rgba(90,215,242,.3); }
   body.ttmode #trimbar, body.ttmode #trimbar + .lbl { display:none; }
+  /* ---- Thunder Run ---- */
+  #thBoost, #thBoostV, #thClock { display:none; }
+  body.thunder #ttPow, body.thunder #ttMiss, body.thunder #ttLaps { display:none; }
+  body.thunder #thBoost { display:block; height:10px; margin-top:8px; border-radius:3px; background:rgba(255,255,255,.14); overflow:hidden; transform:skewX(-20deg); }
+  body.thunder #thBoost i { display:block; height:100%; width:0; background:linear-gradient(90deg,#3aa8ff,#9ae6ff); transition:width .1s; }
+  body.thunder #thBoost.on i { background:linear-gradient(90deg,#ff7a2e,#ffd23a); box-shadow:0 0 10px #ff9a3a; }
+  body.thunder #thBoostV { display:block; font-size:11.5px; opacity:.75; margin-top:4px; letter-spacing:.04em; }
+  body.thunder #thClock { display:block; position:fixed; left:50%; top:calc(10px + env(safe-area-inset-top,0px)); transform:translateX(-50%); z-index:5; pointer-events:none;
+    font:800 44px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-variant-numeric:tabular-nums; text-shadow:0 2px 14px rgba(0,30,40,.6); }
+  body.thunder #thClock.low { color:#ff6a55; }
+  body.touch.thunder #thClock { top:calc(16px + env(safe-area-inset-top,0px)); font-size:30px; }
+  #ttPass.th { font-size:24px; } #ttPass.th.cp { color:#8dff6a; } #ttPass.th.blue { color:#6ad8ff; } #ttPass.th.red { color:#ff7a5a; } #ttPass.th.jump { color:#ffd23a; }
+  body.thunder #touch .c::after { content:"BOOST"; } body.thunder #touch .c.hold { background:rgba(255,150,60,.35); }
+  #ttRes tr.me td { color:#ffd23a; font-weight:700; } #ttRes td:last-child { white-space:nowrap; }
+  #thKeys { display:none; } body.thsel #thKeys { display:table; } body.thsel #ttKeys { display:none; }
 </style>
 </head>
 <body>
@@ -190,10 +205,11 @@
 <div id="start">
   <div id="card" class="glass">
     <h1>Clear Runner</h1>
-    <p>Jetskis on real-time FFT waves. Roam free, or race the clock around the Wave Race 64 courses.</p>
+    <p>Jetskis on real-time FFT waves. Roam free, race the clock around the Wave Race 64 courses, or take on five rivals in Thunder Run.</p>
     <div id="modes">
       <button data-m="free"><b>Free roam</b><small>The open bay, the surf and the islands</small></button>
       <button data-m="tt"><b>Time Trial</b><small>3 laps · buoys · Wave Race 64 physics</small></button>
+      <button data-m="thunder"><b>Thunder Run</b><small>5 rivals · boost · beat the clock</small></button>
     </div>
     <div id="ttSetup" hidden>
       <div class="row" id="ttCourses"><span>Course</span></div>
@@ -221,6 +237,14 @@
       <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, RB / LT slide, B crouch, Y camera, Back restart, Start menu</td></tr>
       <tr><td>Touch</td><td>Left stick (where your thumb lands): steer, lean fore/aft, flick it for stunts · GAS (tap it to climb back on faster) · SLIDE and CROUCH (each with throttle) · Restart, Camera and Menu at the top right</td></tr>
     </table>
+    <table id="thKeys">
+      <tr><td><kbd>W</kbd> / <kbd>↑</kbd> · <kbd>Space</kbd> / <kbd>X</kbd></td><td>Throttle · <b>boost</b> (burns the meter; double-tap on the water for a <b>Hydro Jump</b>)</td></tr>
+      <tr><td><kbd>A</kbd> <kbd>D</kbd> · <kbd>S</kbd> <kbd>Q</kbd> · <kbd>Shift</kbd></td><td>Steer · lean back / forward · slide</td></tr>
+      <tr><td>Boost</td><td><b style="color:#6ad8ff">Blue</b> canisters +4 s, <b style="color:#ff7a5a">red</b> +9 s (up to 18 s). Boosting, nothing knocks you off and rivals you hit get thrown. Some red ones float high: jump for them</td></tr>
+      <tr><td>Clock</td><td>Checkpoints top up the countdown: run out and it's over. Open the throttle on the last red light for a boost start</td></tr>
+      <tr><td>Gamepad</td><td>Left stick steer and lean, A / RT throttle, X / LB boost, RB / LT slide, Y camera, Back restart, Start menu</td></tr>
+      <tr><td>Touch</td><td>Stick · GAS · SLIDE · BOOST (above GAS; double-tap it for a Hydro Jump)</td></tr>
+    </table>
     <table id="freeKeys">
       <tr><td><kbd>W</kbd> <kbd>S</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>Throttle / brake &amp; reverse</td></tr>
       <tr><td><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></td><td>Steer (the jet only steers under throttle)</td></tr>
@@ -238,7 +262,8 @@
   </div>
 </div>
 <div id="tt" class="glass" hidden><div id="ttCourse"></div><div id="ttLap"></div><div id="ttTime">0'00"00</div><div id="ttLaps"></div>
-  <div id="ttPow"><i></i><i></i><i></i><i></i><i></i></div><div id="ttMiss"></div><div id="ttBest"></div></div>
+  <div id="ttPow"><i></i><i></i><i></i><i></i><i></i></div><div id="thBoost"><i></i></div><div id="thBoostV"></div><div id="ttMiss"></div><div id="ttBest"></div></div>
+<div id="thClock"></div>
 <div id="ttDir"><i></i><span></span></div>
 <div id="ttBig"></div><div id="ttPass"></div><div id="ttSplit"></div><div id="ttOut"></div><div id="ttCue"></div>
 <div id="ttRes" class="glass" hidden><div id="ttResBody"></div><div class="btns"><button id="ttAgain">Race again</button><button id="ttMenu">Menu</button></div></div>
@@ -1031,7 +1056,10 @@ WR.T = {
 WR.CRASH = {
   offBuoy:[10,10.5,9.5,10], offPylon:[9.5,10,9,8], offWall:[8.5,9,8,8], offBox:[8.5,9,8,8], offUp:[0.38,0.43,0.43,0.4],
   kn9360:[5,6,5.9,5.5], knPylon:[4,4,3,3.3], knWall:[4,4,3,3.3], knBox:[4,4,3,4], wobUp:[0.48,0.53,0.53,0.5],
+  offRider:[9.5,10,9,8], knRider:[5,6,5,5.5],                                      // unk16B0 (D_800D9310), D_800D9380: craft against craft
 };
+// Thunder Run's arcade allowance: the hits have to be harder and the roll steeper before the rider goes
+WR.CRASH_ARCADE = Object.fromEntries(Object.entries(WR.CRASH).map(([k, v]) => [k, v.map(x => k === 'offUp' ? x*0.6 : k === 'wobUp' ? x*0.55 : x*1.3)]));
 const RS = { RIDE: 0, SWIM: 1, CLIMB: 2, STAGGER: 3 };   // the game's states 0x16, 0x17, 7, 0x18
 // gSinTable lookups: 4096 steps a turn, index truncated like the game's (s32) cast
 const wrSin = i => Math.sin(((i|0) & 4095)*(Math.PI/2048));
@@ -1092,7 +1120,7 @@ function wrRiderReset(S){
   S.rs = RS.RIDE; S.t1608 = 0; S.t16E0 = 0; S.m1602 = 0; S.c74 = -1; S.c58 = 0; S.c1574 = 0; S.k157C = 0;
   if (S.thrown && S.w0) S.w.set(S.w0);
   S.thrown = 0; S.k15D8 = 1; S.btnB = 0; S.thrRaw = 0; S.thrEdge = 0; S.falls = S.falls || 0;
-  S.C38 = S.C3C = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0];
+  S.C38 = S.C3C = S.C40 = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0]; S.hull = 0; S.boostTh = 0; S.rub = 1;
   S.rb = { p: [0, 0, 0], pp: [0, 0, 0], v: [0, 0, 0], wet: 0, hd: [0, 1], t: 0, tw: 0 };
 }
 // func_800624CC: the hull's frame from its particles. forward = p8 - p11, up = p11 over the mid-point of p9/p10,
@@ -1133,7 +1161,7 @@ function wrFrameBegin(S, c, power){
   else if (S.trick === 3){ if (S.wetCount >= 8 && ++S.k15C8 > 30) S.trick = 0; if (S.B5F < 70) S.trick = 0; }
   else if (S.trick === 4){ if (S.B5F >= -69) S.trick = 0; else S.B5F = 0; }
   S.B60 += clamp(S.B5E - S.B60, -15, 15);                                  // display lean, slews 15/frame (D_800D49DC)
-  S.thrMul = S.rs === RS.STAGGER ? 0.3 : 1;                                 // unk1578 (x 0.3 while staggering)
+  S.thrMul = (S.rs === RS.STAGGER ? 0.3 : 1)*(S.rub || 1);                  // unk1578 (x 0.3 while staggering; rub: Thunder Run's catch-up)
   S.dt = 0.992;                                                             // D_800D4AC4 (0.973 only on Drake Lake's mud)
   if (c.slide) S.kLat = S.k15E8*0.2 + 0.8;                                  // R held: the hull lets go sideways
   else if (S.m1602){                                                        // falling off: the hull slides free; a wobble: less grip
@@ -1158,7 +1186,7 @@ function wrFrameBegin(S, c, power){
   // the water level the hull floats on: +3 units once it is up to speed; heavier riders sit lower (unk15D4)
   S.level = (hs < 33.333336 ? 3*hs/33.333336 : 3) + (S.r === 1 ? -5 : S.r === 2 ? 2 : 0);
   S.BE4 = S.cen.slice();
-  S.hit = 0; S.bump = 0; S.C38 = S.C3C = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0];   // this frame's impacts (unkC38..C50)
+  S.hit = 0; S.bump = 0; S.C38 = S.C3C = S.C40 = S.C48 = S.C50 = 0; S.n15B4 = [0, 0, 0];   // this frame's impacts (unkC38..C50)
 }
 // one of the 5 sub-steps (func_80064C0C). water(x, z, out): out[0] = surface height, out[1..2] = slope, in units.
 // walls: wrWalls(); probes(S): obstacle hook (buoys and gate posts), called where the game checks them.
@@ -1170,7 +1198,7 @@ function wrSub(S, water, walls, probes){
   if (sp >= 11.111112) th = S.bcc*S.bc4;
   else if (S.bd0 <= sp) th = (1 - (1 - wrSin(Math.trunc((sp - S.bd0)*S.bdc) + 0x400))*S.be0)*S.bc4;
   else th = (1 - (1 - wrSin(Math.trunc((S.bd0 - sp)*S.bd4) + 0x400))*S.bd8)*S.bc4;
-  th = (th + S.B9C)*Math.sqrt(Math.max(0, 1 - f[1]*f[1]));
+  th = (th + S.B9C + S.boostTh)*Math.sqrt(Math.max(0, 1 - f[1]*f[1]));     // boostTh: Thunder Run's boost
   if (!(W[0] | W[2])) th *= 0.75;                                          // D_800D49C4: stern out of the water
   th *= S.thrMul;
   if (S.C66) S.B98 = th; else S.B98 = S.B98 > 0.005 ? S.B98 - 0.005 : 0;   // D_800D49C8: coasts down off the throttle
@@ -1300,16 +1328,18 @@ function wrFrameEnd(S){
 // - A light buoy knock, or riding the water rolled past ~60 deg: a wobble, less grip for up to 26 frames; still
 //   rolled over by then, a stagger.
 function wrRiderFrame(S, water){
-  const C = WR.CRASH, r = S.r, fast = S.B90 > 22.222223;
+  const C = S.arcade ? WR.CRASH_ARCADE : WR.CRASH, r = S.r, fast = S.B90 > 22.222223;
+  if (S.hull){ S.C38 = S.C3C = S.C40 = S.C48 = S.C50 = 0; S.hit = 0; }     // Thunder Run's Mighty Hull: boosting, nothing knocks you off
   if (S.k15D8 < 1) S.k15D8 = S.btnB ? Math.min(1, S.k15D8 + 0.01) : 1;
   if (S.t1608 > 0){
     if (--S.t1608 === 0){ S.rs = RS.SWIM; S.c74 = -1; S.falls++; wrRiderLaunch(S); }
   } else if (S.t16E0 > 0){
     if (--S.t16E0 === 0 || S.trick){ S.t16E0 = 0; S.m1602 = 0; S.rs = RS.STAGGER; S.c1574 = 0; }
     else if (S.up[1] > C.wobUp[r]){ S.t16E0 = 0; S.m1602 = 0; }
+  } else if (S.hull){                                                         // boosting: steady, whatever the water does
   } else if (S.rs !== RS.CLIMB && S.rs !== RS.SWIM &&
       ((fast && (S.C38 > C.offBuoy[r] || S.C50 > C.offBuoy[r] || S.C3C > C.offPylon[r] || S.hit > C.offWall[r] || S.C48 > C.offBox[r]))
-       || (S.wetCount > 0 && S.wetCount < 8 && S.up[1] < C.offUp[r]))){
+       || (S.wetCount > 0 && S.wetCount < 8 && S.up[1] < C.offUp[r]) || S.C40 > C.offRider[r])){
     S.t1608 = 5;                                                               // D_800D497C
     if (!S.thrown){                                                            // unk160A
       const n = S.n15B4, V = S.V;
@@ -1321,7 +1351,7 @@ function wrRiderFrame(S, water){
     }
     if (!S.m1602) S.m1602 = 1;
   } else if (S.rs === RS.RIDE){
-    if (fast && (S.C50 > C.kn9360[r] || S.C3C > C.knPylon[r] || S.hit > C.knWall[r] || S.C48 > C.knBox[r])) S.t16E0 = 1;
+    if ((fast && (S.C50 > C.kn9360[r] || S.C3C > C.knPylon[r] || S.hit > C.knWall[r] || S.C48 > C.knBox[r])) || S.C40 > C.knRider[r]) S.t16E0 = 1;
     else if ((fast && S.C38 > C.kn9360[r]) || (S.wetAny && S.up[1] < C.wobUp[r])){ S.t16E0 = 26; if (!S.m1602) S.m1602 = 2; }   // D_800D4980
   } else if (S.rs === RS.STAGGER){
     if ((S.wetAny || S.C48) && (++S.c1574 >= 41 || (S.c1574 >= 11 && (!S.C66 || S.B90 < 11.111112)))){
@@ -3838,7 +3868,7 @@ function post(t){
 
 
 /* ---------------- Game state ---------------- */
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 // scene (day, full moon, retro dusk): ?scene=0..2, else the last one used. SUNV is the key light's direction
 const SUNV = [0, 1, 0];
@@ -4370,6 +4400,7 @@ function ttProbes(S){
     hit: for (let i = L.length - 1; i >= 0; i--){
       const b = L[i];
       ch = b.gate ? 'C3C' : 'C38';
+      if (TH.on && b.k !== 3) continue;                                         // Thunder Run: no buoys, only the start gate
       if (!b.gate){
         if (!b.buoy) continue;
         let dx = px - b.x, dy = py - b.y, dz = pz - b.z; const d2 = dx*dx + dy*dy + dz*dz;
@@ -4458,6 +4489,10 @@ const TT_SND = {
   finish:() => ttTone([[523,0,0.2],[659,0.15,0.2],[784,0.3,0.2],[1047,0.45,0.6],[1319,0.45,0.6]]),
   out:   () => ttTone([[440,0,0.12]], 'square', 0.1),
   bad:   () => ttTone([[196,0,0.6]], 'sawtooth', 0.18),
+  boost: () => ttTone([[196,0,0.12],[294,0.05,0.14],[392,0.1,0.3]], 'sawtooth', 0.09),
+  jump:  () => ttTone([[330,0,0.1],[494,0.06,0.12],[740,0.12,0.3]], 'square', 0.1),
+  cp:    () => ttTone([[784,0,0.1],[1175,0.08,0.28]], 'triangle', 0.2),
+  can:   red => ttTone(red ? [[880,0,0.08],[1109,0.06,0.08],[1319,0.12,0.08],[1760,0.18,0.3]] : [[1047,0,0.08],[1568,0.06,0.22]], 'triangle', 0.18),
 };
 
 // ---- time format: m'ss"cc like the game ----
@@ -4476,6 +4511,8 @@ function ttBig(html, secs = 1.6, cls = ''){ $ttBig.innerHTML = html; $ttBig.clas
 
 // ---- start / stop ----
 function ttStart(){
+  TH.on = gameMode === 'thunder'; document.body.classList.toggle('thunder', TH.on);
+  if (TH.on && !TH_COURSES.includes(TT_COURSES[TT.ci].id)) TT.ci = TT_COURSES.findIndex(c => c.id === TH_COURSES[0]);
   const course = TT_COURSES[TT.ci], diff = ttDiffOf(course);
   TT.course = course; TT.on = true; TT.paused = false;
   if (CRAFT.id !== 'stand'){ setCraft('stand'); skiBuf.set(buildSkiMesh()); ski = makeSki(); }   // WR64: stand-up race skis
@@ -4492,7 +4529,7 @@ function ttStart(){
   if (TT.scene0 === undefined) TT.scene0 = sceneIdx; else applyScene(TT.scene0);
   if (course.id === 'sunset') applyScene(2); else if (course.id === 'twilight') applyScene(1);
   ttRestart();
-  ttBufs.gates.set(ttGatesMesh(TT.R.route, TT.ox, TT.oz));
+  ttBufs.gates.set(ttGatesMesh(TH.on ? thGates() : TT.R.route, TT.ox, TT.oz));
   ttBufs.boxes.set(ttBoxesMesh(TT.boxes, TT.ox, TT.oz));
   if (course.style === 'harbour') ttBufs.walls.set(ttWallsMesh(course, TT.ox, TT.oz)); else ttBufs.walls.n = 0;
   document.body.classList.add('ttmode'); $tt.hidden = false;
@@ -4514,13 +4551,14 @@ function ttRestart(){
   TT.boxes = [...ttRampBoxes(course, dI), ...ttPropBoxes(TT.props)];
   TT.marks = [...course.marks.filter(m => m[2] !== 2 || dI > 0).filter(m => m[2] !== 3 || dI > 1), ...course.pink.map(p => [p[0], p[1], 1])];
   $ttRes.hidden = true; slam.pending = 0; slam.air = 0; ski.airT = 0; ski.lastAir = 0;
+  if (TH.on) thRestart();
   ttSync(1); cam.init = false; jetPrev = null; footPrev = null;
   ttHud(true);
 }
 function ttStop(){
   WRW.on = false; if (TT.sea0 !== undefined){ setSeaState(TT.sea0, true); TT.sea0 = undefined; }
   if (TT.scene0 !== undefined) applyScene(TT.scene0); TT.scene0 = undefined;
-  TT.on = false; CLAND.on = false; uploadCourseLand(); $tt.hidden = true; $ttRes.hidden = true; $ttBig.className = '';
+  TT.on = false; TH.on = false; document.body.classList.remove('thunder'); CLAND.on = false; uploadCourseLand(); $tt.hidden = true; $ttRes.hidden = true; $ttBig.className = '';
   $ttPass.className = ''; $ttOut.className = ''; document.body.classList.remove('ttmode');
   let c = null; try { c = localStorage.getItem('clr.craft'); } catch(e){}
   if (CRAFTS[c] && c !== CRAFT.id){ setCraft(c); skiBuf.set(buildSkiMesh()); }
@@ -4530,7 +4568,8 @@ function ttStop(){
 // ---- controls: the N64 pad. Stick x steers, stick y leans fore/aft (up = forward), A/Z throttle, R slide, B crouch ----
 function ttInput(dt){
   const k = c => keys.has(c);
-  let thr = k('KeyW') || k('ArrowUp') || k('Space'), slide = k('ShiftLeft') || k('ShiftRight'), b = k('KeyE');
+  let thr = k('KeyW') || k('ArrowUp') || (!TH.on && k('Space')), slide = k('ShiftLeft') || k('ShiftRight'), b = k('KeyE');
+  let boost = TH.on && (k('Space') || k('KeyX'));
   let sx = ((k('KeyD') || k('ArrowRight')) ? 1 : 0) - ((k('KeyA') || k('ArrowLeft')) ? 1 : 0);
   let sy = (k('KeyQ') ? 1 : 0) - ((k('KeyS') || k('ArrowDown')) ? 1 : 0);
   // keys push a virtual stick: out to full in 1/8 s (a tap gives a small correction), back to the centre in 1/20 s
@@ -4551,6 +4590,7 @@ function ttInput(dt){
     if (bt(g, 0) || (g.buttons[7] && g.buttons[7].value > 0.3)) thr = true;            // A or the right trigger (the N64's A / Z)
     if (bt(g, 5) || (g.buttons[6] && g.buttons[6].value > 0.3)) slide = true;           // R: RB or the left trigger
     if (bt(g, 1)) b = true;                                                              // B, as on the N64 pad
+    if (bt(g, 2) || bt(g, 4)) boost = TH.on;                                             // Thunder Run: X or LB boosts
     const y = bt(g, 3), sel = bt(g, 8), stt = bt(g, 9);
     if (y && !inp.padY) cycleCam(); if (sel && !inp.padSel) ttRestart();
     if (stt && !inp.padStart){ if ($start.hidden) showMenu(); else start(); }
@@ -4559,9 +4599,11 @@ function ttInput(dt){
   if (touch.gasId !== null) thr = true;
   if (touch.steerId !== null){ px = touch.steer*80; py = touch.sy*80; }
   if (touch.slideId !== null){ slide = true; thr = true; }        // one thumb can't hold two pads: SLIDE and CROUCH
-  if (touch.crouchId !== null){ b = true; thr = true; }          // throttle too, like holding GAS with them
-  if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; b = false; }
-  TT.pad = { x: px, y: py, thr, slide, b };
+  if (touch.crouchId !== null){ if (TH.on) boost = true; else b = true; thr = true; }   // throttle too, like holding GAS with them
+                                                                 // (Thunder Run: the pad is BOOST)
+  if (TT.auto){ const a = ttAutopilot(); px = a[0]; py = 0; thr = true; slide = false; b = false; boost = false;
+    if (TH.on && TH.player){ const st = thSteer(TH.player); px = st.raw; slide = Math.abs(st.err) > 0.8; boost = st.bend < 0.3 && Math.abs(st.err) < 0.25 && TH.player.boost > 1; } }
+  TT.pad = { x: px, y: py, thr, slide, b, boost };
 }
 // The rider's falls, drawn from the game's states: losing the balance (the 5 frames before the fall), thrown clear and
 // floating, swimming back to the stern and climbing on (state 7, frames 0-56), standing back up, staggering (0x18),
@@ -4635,6 +4677,7 @@ function ttTick(dt){
     if (TT.k === 0) ttFrameBegin();
     TT.tOff = TT.simT - tSim;
     wrSub(TT.S, ttWater, TT.walls, ttProbes);
+    if (TH.on) thSub();
     if (++TT.k === WR.SUB){ TT.k = 0; ttFrameEnd(); }
   }
   TT.simT = tSim + (TT.acc - 0.01*TT.k);
@@ -4645,8 +4688,9 @@ function ttFrameBegin(){
   const p = TT.pad || { x:0, y:0, thr:false, slide:false };
   const [sx, sy] = wrStick(p.x, p.y);
   TT.slide = racing && p.slide;
-  wrFrameBegin(TT.S, racing ? { x: sx, y: sy, thr: p.thr, slide: p.slide, b: p.b } : { x:0, y:0, thr:false, slide:false, b:false }, TT.R.power);
-  ttBuoysFrame(); ttPropsFrame();
+  wrFrameBegin(TT.S, racing ? { x: sx, y: sy, thr: p.thr || (TH.on && !!p.boost), slide: p.slide, b: p.b } : { x:0, y:0, thr:false, slide:false, b:false }, TH.on ? 0 : TT.R.power);
+  if (TH.on) thFrameBegin(racing); else ttBuoysFrame();
+  ttPropsFrame();
 }
 // a fall's sounds and splash: the knock when the rider is thrown, the splash where they land in the water
 function ttRiderFx(S){
@@ -4676,7 +4720,7 @@ function ttFrameEnd(){
   }
   const racing = TT.phase === 'race';
   R.events.length = 0;
-  ttRaceFrame(R, S.cen[0], S.cen[2], S.BE4[0], S.BE4[2], racing);
+  if (TH.on) thFrameEnd(racing); else ttRaceFrame(R, S.cen[0], S.cen[2], S.BE4[0], S.BE4[2], racing);
   // course out (func_801F1CFC): outside every course rectangle, a count from 10 starts; at 0 the rider retires
   if (racing && !R.finished && !R.retired){
     const out = !ttInArea(R.course.area, S.cen[0], S.cen[2]);
@@ -4742,6 +4786,7 @@ function ttResults(nb, newLap, rec){
 }
 function ttHud(force){
   const R = TT.R; if (!R) return;
+  if (TH.on){ if (TH.line) thHud(); return; }
   const lap = clamp(R.lap, 1, R.laps);
   document.getElementById('ttCourse').textContent = `${TT.course.name} · ${TT_DIFFS.find(d => d[0] === R.diff)[1]}`;
   document.getElementById('ttLap').innerHTML = `LAP <b>${R.finished ? R.laps : lap}</b>/${R.laps}`;
@@ -4762,6 +4807,7 @@ function ttFrameUI(dt){
   if (TT.split && TT.split.t > 0){ TT.split.t -= dt; sp.className = 'on ' + (TT.split.d <= 0 ? 'fast' : 'slow'); sp.textContent = (TT.split.d <= 0 ? '−' : '+') + ttFmt(Math.abs(TT.split.d)); }
   else sp.className = '';
   if (TT.outT > 0){ $ttOut.className = 'on'; $ttOut.innerHTML = `COURSE OUT <b>${Math.floor(TT.outT/20)}</b>`; } else $ttOut.className = '';
+  if (TH.on){ thFrameUI(dt); return; }
   ttHud();
   // guidance: the next marker is behind you, or the last crossing did not count (outside the gate, or in another zone:
   // the game makes you go back and cross it again; here carrying on also works, see ttSkipAhead). A compass arrow points at it.
@@ -4797,7 +4843,7 @@ function ttDraw(t){
     gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM); gl.bindVertexArray(buf.vao); gl.drawElements(gl.TRIANGLES, buf.n, gl.UNSIGNED_INT, 0);
   };
   gl.uniform1f(pMesh.u.uShOn, 0);
-  R.route.list.forEach(b => {
+  if (!TH.on) R.route.list.forEach(b => {
     if (!(b.k === 0 || b.k === 1)) return;
     const X = TT.ox + b.x/U, Z = TT.oz + b.z/U; waterSurface(ocean, X, Z, w);
     const buf = b.unc ? ttBufs.small : b.k === 0 ? ttBufs.red : ttBufs.yellow, y = b.unc ? w[0] + 0.45 : b.y/U;
@@ -4816,6 +4862,7 @@ function ttDraw(t){
   if (ttBufs.gates.n){ _ttM.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _ttM);
     gl.bindVertexArray(ttBufs.gates.vao); gl.drawElements(gl.TRIANGLES, ttBufs.gates.n, gl.UNSIGNED_INT, 0); }
   // arrow over the next counted buoy (the game flashes one there, func_8006B334), pointing at the side to pass
+  if (TH.on){ thDraw(t, drawAt); return; }
   const b = R.route.list[R.next];
   if (!R.finished && !R.retired && (b.k === 0 || b.k === 1) && b.counted){
     const X = TT.ox + b.x/U, Z = TT.oz + b.z/U, yaw = Math.atan2(b.sx, b.sz) - Math.PI/2;
@@ -4824,17 +4871,359 @@ function ttDraw(t){
   }
 }
 
+/* ==================== THUNDER RUN: an arcade boost race on the Wave Race 64 courses ====================
+   After Hydro Thunder (Midway, 1999): a pack of CPU racers, boost canisters to collect (blue +4 s, red +9 s, a meter up
+   to 18 s) and burn when you choose, a Mighty Hull while boosting (nothing knocks you off, and rivals you ram get
+   thrown), the Hydro Jump (double-tap boost on the water), and a countdown clock that checkpoints top up. The boats
+   are the same Wave Race 64 craft and rider as the Time Trial (12-particle hulls, the game's falls); the rivals drive
+   them with a stick and a throttle like the player. */
+const TH = { on: false, laps: 3, boostMax: 18, blue: 4, red: 9, kBoost: 0.25, jumpCost: 1, jumpV: 7, line: null, ents: [], cans: [], cps: [],
+  clock: 0, cpNext: 0, boostT: 0, lastTap: -9, prevBoost: false, startState: '', spray: 0, msgT: 0 };
+const TH_RIVALS = [   // name, rider slot (machine), tuning [handling, engine, grip], livery
+  { name: 'Razorback',  r: 0, tune: [5, 7, 4], col: [0.92, 0.16, 0.10] },
+  { name: 'Tidal Fury', r: 3, tune: [6, 6, 5], col: [0.12, 0.42, 0.98] },
+  { name: 'Sun Chaser', r: 1, tune: [5, 5, 6], col: [1.00, 0.62, 0.08] },
+  { name: 'Jade Viper', r: 2, tune: [4, 6, 6], col: [0.10, 0.85, 0.55] },
+  { name: 'Midnight',   r: 0, tune: [6, 5, 5], col: [0.62, 0.22, 0.95] },
+];
+// per difficulty (the Layout buttons): rival pace, how readily they boost, catch-up strength, how generous the clock is
+const TH_DIFF = { normal: { pace: 0.94, boost: 0.55, rub: 0.5, gen: 1.75 }, hard: { pace: 1.0, boost: 0.8, rub: 0.7, gen: 1.5 },
+                  expert: { pace: 1.05, boost: 1.0, rub: 0.9, gen: 1.3 } };
+const TH_STEP = 60;                                  // racing-line sample spacing (units)
+const TH_COURSES = ['sunny', 'sunset', 'drake', 'glacier'];   // the open courses: the tight harbours and channels jam a pack of six
+
+// the racing line: down the channel the buoys mark (there are none to pass here, so straight over their spots rather
+// than weaving round them), through every gate's centre, as a closed Catmull-Rom curve sampled every 60 units from
+// the start/finish line, then smoothed so it takes the corners in sweeping arcs
+function thLine(route){
+  const L = route.list, n = L.length, pts = [];
+  for (let i = 0; i < n; i++){ const b = L[(route.fin + i) % n];
+    if (b.gate) pts.push([(b.e1x + b.e2x)/2, (b.e1z + b.e2z)/2]); else pts.push([b.x, b.z]); }
+  const x = [], z = [];
+  for (let i = 0; i < pts.length; i++){
+    const p0 = pts[(i - 1 + pts.length) % pts.length], p1 = pts[i], p2 = pts[(i + 1) % pts.length], p3 = pts[(i + 2) % pts.length];
+    const segs = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1])/TH_STEP));
+    for (let k = 0; k < segs; k++){ const t = k/segs, t2 = t*t, t3 = t2*t;
+      const f = (a, b, c, d) => 0.5*((2*b) + (-a + c)*t + (2*a - 5*b + 4*c - d)*t2 + (-a + 3*b - 3*c + d)*t3);
+      x.push(f(p0[0], p1[0], p2[0], p3[0])); z.push(f(p0[1], p1[1], p2[1], p3[1])); }
+  }
+  const smooth = r => { const n2 = x.length, x0 = x.slice(), z0 = z.slice();   // keep the start point on the line
+    for (let i = 1; i < n2; i++){ let sx = 0, sz = 0; for (let k = -r; k <= r; k++){ const j = (i + k + n2) % n2; sx += x0[j]; sz += z0[j]; } x[i] = sx/(2*r + 1); z[i] = sz/(2*r + 1); } };
+  for (let pass = 0; pass < 3; pass++) smooth(6);
+  // keep it clear of the course's walls: points nearer than 280 units to a wall face (or behind it) are pushed out
+  // along the wall's normal, a few rounds with a light smoothing in between
+  const W = TT.walls;
+  if (W) for (let pass = 0; pass < 6; pass++){
+    for (let i = 1; i < x.length; i++){
+      const cell = W.map.get(W.key(Math.floor(x[i]/W.CELL), Math.floor(z[i]/W.CELL))); if (!cell) continue;
+      for (const idx of cell){ const [ax, az, nx, nz, tx, tz, len] = W.list[idx], t = (x[i] - ax)*tx + (z[i] - az)*tz;
+        if (t < -40 || t > len + 40) continue;
+        const d = (x[i] - ax)*nx + (z[i] - az)*nz; if (d < 280 && d > -400){ x[i] += nx*(280 - d); z[i] += nz*(280 - d); } }
+    }
+    smooth(2);
+  }
+  const N = x.length, hd = new Float64Array(N);
+  for (let i = 0; i < N; i++){ const j = (i + 1) % N; hd[i] = Math.atan2(x[j] - x[i], z[j] - z[i]); }
+  return { x, z, hd, N };
+}
+const thWrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
+// progress along the line, unwrapped (lap x N + index): searched near the last value so it can't jump across the course
+function thTrack(e, init){
+  const L = TH.line, N = L.N, cx = e.S.cen[0], cz = e.S.cen[2];
+  if (init){ let best = 1e18, bi = 0; for (let i = 0; i < N; i++){ const d = (L.x[i] - cx)**2 + (L.z[i] - cz)**2; if (d < best){ best = d; bi = i; } }
+    e.u = bi > N/2 ? bi - N : bi; return; }
+  let best = 1e18, bu = e.u;
+  for (let du = -6; du <= 40; du++){ const u = Math.floor(e.u) + du, i = ((u % N) + N) % N, d = (L.x[i] - cx)**2 + (L.z[i] - cz)**2; if (d < best){ best = d; bu = u; } }
+  e.u = bu; e.off = Math.sqrt(best);
+}
+// a boat on the grid: two rows of three behind the start line, the player in the middle of the back row
+function thGrid(slot){
+  const R = TT.R, g = R.route.list[R.route.fin], a = g.a*Math.PI/180, row = Math.floor(slot/3), col = slot % 3 - 1;
+  let ux = g.e1x - g.e2x, uz = g.e1z - g.e2z; const ul = Math.hypot(ux, uz) || 1; ux /= ul; uz /= ul;
+  const back = 420 + row*260, side = col*150 + (row ? 70 : -70);
+  return [g.x - g.hx*back + ux*side, g.z - g.hz*back + uz*side, a];
+}
+function thRestart(){
+  const R = TT.R, D = TH_DIFF[R.diff] || TH_DIFF.hard;
+  TH.line = thLine(R.route); TH.diff = D;
+  const N = TH.line.N;
+  // entrants: the rivals and the player (TT.S)
+  TH.ents = TH_RIVALS.map((r, i) => ({ name: r.name, col: r.col, S: wrCraft(r.r, r.tune), boost: 2, lane: (i - 2)*60, cpu: true, stuck: 0,
+    wob: Math.random()*6.28, fin: 0, place: 0, bufs: thBufsFor(i) }));
+  TH.ents.splice(4, 0, { name: 'You', S: TT.S, boost: 2, cpu: false, fin: 0, place: 0 });
+  TH.ents.forEach((e, i) => { const [x, z, a] = thGrid(i); wrPlace(e.S, x, z, a); e.S.arcade = 1; thTrack(e, true); });
+  TH.player = TH.ents.find(e => !e.cpu);
+  // checkpoints: four a lap, the last one the lap line; each adds the time to reach the next one at a brisk pace
+  TH.cps = [N/4, N/2, 3*N/4, N].map(Math.round);
+  TH.cpTime = TH.cps.map((c, i) => (c - (i ? TH.cps[i - 1] : 0))*TH_STEP/(70/1.8*20)*D.gen);   // seconds at 70 km/h, x generosity
+  TH.cpNext = 0; TH.clock = TH.cpTime[0] + 8;
+  // canisters: blue ones every ~800 units, alternating sides of the line; two red ones a lap, one out wide, one up high
+  TH.cans = [];
+  for (let i = 18, k = 0; i < N - 6; i += 13, k++){
+    const red = k % 9 === 5, high = k % 9 === 8, side = (k % 2 ? 1 : -1)*(red ? 300 : 110 + 40*(k % 3)), h = TH.line.hd[i];
+    TH.cans.push({ x: TH.line.x[i] + Math.cos(h)*side, z: TH.line.z[i] - Math.sin(h)*side, red: red || high, high, t: 0 });
+  }
+  TH.boostT = 0; TH.lastTap = -9; TH.prevBoost = false; TH.startState = ''; TH.jumpT = 0; TH.wrongT = 0; TH.resT = 0;
+  TT.best = thLoadBest();
+}
+// liveries: the ski's green trim, the rider's helmet, gloves and vest in the rival's colour (built once per rival)
+const thMeshCache = [];
+function thBufsFor(i){
+  if (thMeshCache[i]) return thMeshCache[i];
+  const c = TH_RIVALS[i].col, L = lin(c[0], c[1], c[2], 0.9), green = COL.green, helmet = COL.helmet, glove = COL.glove, vest = COL.vest;
+  const recolor = (geo, pairs) => { const v = geo.v; for (let q = 0; q < v.length; q += 10)
+    for (const [from, to] of pairs) if (Math.abs(v[q+6] - from[0]) < 1e-3 && Math.abs(v[q+7] - from[1]) < 1e-3 && Math.abs(v[q+8] - from[2]) < 1e-3){ v[q+6] = to[0]; v[q+7] = to[1]; v[q+8] = to[2]; break; }
+    return geo; };
+  const ski = makeGeoBuffer(false), rider = makeGeoBuffer(false);
+  ski.set(recolor(buildSkiMeshStand(), [[green, L]]));
+  const vc = [Math.pow(c[0]*0.85 + 0.15, 2.2), Math.pow(c[1]*0.85 + 0.15, 2.2), Math.pow(c[2]*0.85 + 0.15, 2.2)];
+  rider.set(recolor(buildRiderStand({ steer: 0, lean: 0, crouch: 0.3, attack: 0.6 }, false).geo, [[helmet, L], [glove, L], [green, L], [vest, vc]]));
+  return thMeshCache[i] = { ski, rider };
+}
+
+// ---- once a frame, before the sub-steps: the rivals' sticks, and everyone's boost ----
+function thFrameBegin(racing){
+  const L = TH.line, N = L.N, D = TH.diff, P = TH.player, p = TT.pad || {};
+  // the player's boost: hold to burn the meter (the throttle comes with it); a double tap on the water is a Hydro Jump
+  const bDown = !!p.boost && racing;
+  if (bDown && !TH.prevBoost){ const now = TT.frame*0.05;
+    if (now - TH.lastTap < 0.3 && P.boost >= TH.jumpCost && TT.S.wetCount >= 4 && TT.S.rs === RS.RIDE && !TT.S.t1608) thJump(P);
+    TH.lastTap = now; }
+  TH.prevBoost = bDown;
+  thBoostSet(P, (bDown || TH.boostT > 0) && racing);
+  if (TH.boostT > 0) TH.boostT -= 0.05;
+  // the boost start: the throttle opened during the last half second of the countdown, not before
+  if (TT.phase === 'countdown'){ if (p.thr && TT.cd < 50) TH.startState = 'early'; else if (p.thr && TT.cd >= 50 && TH.startState !== 'early') TH.startState = 'boost'; }
+  // the rivals: aim at the line ahead (further at speed) in their lane, slide through tight turns, boost on straights
+  for (const e of TH.ents){ if (!e.cpu) continue;
+    const S = e.S, { err, bend, raw } = thSteer(e);
+    const [sx] = wrStick(raw, 0);
+    const want = racing && e.boost > 0.3 && bend < 0.3 && Math.abs(err) < 0.25 && (e.boostHold > 0 || Math.random() < 0.08*D.boost);
+    e.boostHold = want ? (e.boostHold > 0 ? e.boostHold - 1 : 20 + 30*D.boost) : 0;
+    thBoostSet(e, want);
+    // catch-up: rivals behind the player find a little more, ones far ahead ease off
+    S.rub = racing ? clamp(1 + (P.u - e.u)/N*0.9*D.rub, 0.86, 1.14)*D.pace : 1;
+    wrFrameBegin(S, racing ? { x: sx, y: 0, thr: true, slide: Math.abs(err) > 0.8 && S.B90 > 25, b: false } : { x: 0, y: 0, thr: false, slide: false, b: false }, 0);
+  }
+}
+function thBoostSet(e, on){
+  const S = e.S, live = on && e.boost > 0 && S.rs === RS.RIDE && !S.t1608;
+  if (live && !S.boostTh && !e.cpu) TT_SND.boost();
+  S.boostTh = live ? TH.kBoost : 0; S.hull = live ? 1 : 0;
+  if (live){ e.boost = Math.max(0, e.boost - 0.05); if (!e.cpu) S.C66 = 1; }
+}
+// steering along the line: aim at a point ahead (further at speed) in the boat's lane; how sharp the line bends next
+function thSteer(e){
+  const L = TH.line, N = L.N, S = e.S, ahead = 6 + S.B90*0.14, j = Math.floor(e.u + ahead), i = ((j % N) + N) % N, h = L.hd[i];
+  e.wob = (e.wob || 0) + 0.03; const lane = (e.lane || 0) + (e.cpu ? 50*Math.sin(e.wob) : 0);
+  const tx = L.x[i] + Math.cos(h)*lane, tz = L.z[i] - Math.sin(h)*lane;
+  const err = thWrapA(Math.atan2(tx - S.cen[0], tz - S.cen[2]) - Math.atan2(S.fwd[0], S.fwd[2]));
+  const i2 = ((j + 22) % N + N) % N;
+  return { err, bend: Math.abs(thWrapA(L.hd[i2] - L.hd[i])), raw: clamp(-err*(170 - 60*clamp(S.B90/60, 0, 1)), -80, 80) };   // gentler at speed
+}
+// the Hydro Jump: everything up at once, the bow a little more
+function thJump(e){
+  const S = e.S, V = S.V; e.boost -= TH.jumpCost;
+  for (let i = 0; i < 12; i++) V[i*3+1] += TH.jumpV + (i >= 3 && i <= 5 ? 1.2 : 0);
+  if (!e.cpu){ TT_SND.jump(); TH.jumpT = 1; thMsg('HYDRO JUMP', 'jump'); }
+}
+// ---- after each of the player's sub-steps: the rivals' sub-step, then boats against boats ----
+function thSub(){
+  for (const e of TH.ents) if (e.cpu) wrSub(e.S, ttWater, TT.walls, ttProbes);
+  const E = TH.ents;
+  for (let a = 0; a < E.length; a++) for (let b = a + 1; b < E.length; b++) thBump(E[a], E[b]);
+}
+// two boats as two circles each (bow and stern, radius 17 units): overlapping ones are pushed apart; a hard enough hit
+// is the game's rider-against-rider knock (unkC40). A boosting Mighty Hull takes nothing and gives it all back.
+function thBump(A, B){
+  const SA = A.S, SB = B.S;
+  if (Math.abs(SA.cen[0] - SB.cen[0]) > 120 || Math.abs(SA.cen[2] - SB.cen[2]) > 120) return;
+  let hit = null;
+  for (const oa of [22, -22]) for (const ob of [22, -22]){
+    const ax = SA.cen[0] + SA.fwd[0]*oa, az = SA.cen[2] + SA.fwd[2]*oa, bx = SB.cen[0] + SB.fwd[0]*ob, bz = SB.cen[2] + SB.fwd[2]*ob;
+    const dx = ax - bx, dz = az - bz, d = Math.hypot(dx, dz);
+    if (d < 34 && (!hit || d < hit[2])) hit = [dx/(d || 1), dz/(d || 1), d];
+  }
+  if (!hit) return;
+  const [nx, nz, d] = hit, pen = 34 - d;
+  const vrel = (SA.delta[0] - SB.delta[0])*nx + (SA.delta[2] - SB.delta[2])*nz, close = Math.max(0, -vrel);
+  let ka = 0.5, kb = 0.5, lift = 0;
+  if (SA.hull && !SB.hull){ ka = 0; kb = 1.4; lift = 1; } else if (SB.hull && !SA.hull){ ka = 1.4; kb = 0; lift = -1; }
+  const ja = close*ka + pen*0.15, jb = close*kb + pen*0.15;
+  for (let i = 0; i < 12; i++){
+    SA.V[i*3] += nx*ja; SA.V[i*3+2] += nz*ja; SA.P[i*3] += nx*pen*0.5*(ka ? 1 : 0.2); SA.P[i*3+2] += nz*pen*0.5*(ka ? 1 : 0.2);
+    SB.V[i*3] -= nx*jb; SB.V[i*3+2] -= nz*jb; SB.P[i*3] -= nx*pen*0.5*(kb ? 1 : 0.2); SB.P[i*3+2] -= nz*pen*0.5*(kb ? 1 : 0.2);
+    if (lift > 0) SB.V[i*3+1] += close*0.25; else if (lift < 0) SA.V[i*3+1] += close*0.25;
+  }
+  // rubbing is racing: only a Mighty Hull ram (or a really hard hit) counts as the knock that can throw a rider
+  if (!SA.hull && (lift < 0 || close > 6)){ SA.C40 = Math.max(SA.C40, close*(lift < 0 ? 2.2 : 1)); SA.n15B4 = [nx, 0, nz]; }
+  if (!SB.hull && (lift > 0 || close > 6)){ SB.C40 = Math.max(SB.C40, close*(lift > 0 ? 2.2 : 1)); SB.n15B4 = [-nx, 0, -nz]; }
+  if (close > 2 && (!A.cpu || !B.cpu)) splashSound(Math.min(1, 0.2 + close*0.08));
+}
+// ---- once a frame, after the physics: progress, laps and checkpoints, canisters, the clock, the rivals' falls ----
+function thFrameEnd(racing){
+  const R = TT.R, N = TH.line.N, P = TH.player;
+  if (racing && !R.finished && !R.retired) R.time += 50;
+  for (const e of TH.ents){
+    if (e.cpu){ wrFrameEnd(e.S); wrRiderFrame(e.S, ttWater); }
+    thTrack(e, false);
+    // rivals that have stopped against something get put back on the line a little further on
+    if (e.cpu && racing){
+      e.stuck = (e.S.rs === RS.RIDE && e.S.B90 < 5) || e.off > 900 ? e.stuck + 1 : 0;
+      if (e.stuck > 50){ const i = ((Math.floor(e.u) + 4) % N + N) % N;
+        wrPlace(e.S, TH.line.x[i], TH.line.z[i], TH.line.hd[i]); e.u = Math.floor(e.u) + 4; e.stuck = 0; } }
+    if (!e.fin && e.u >= TH.laps*N && racing){ e.fin = R.time; if (!e.cpu) thFinish(); }
+  }
+  // the player's checkpoints and laps
+  if (racing && !R.finished && !R.retired){
+    const lapN = Math.floor(P.u/N), within = P.u - lapN*N, cpAbs = Math.floor(TH.cpNext/4)*N + TH.cps[TH.cpNext % 4];
+    if (P.u >= cpAbs && TH.cpNext < TH.laps*4){
+      const k = TH.cpNext % 4, add = TH.cpTime[(k + 1) % 4]; TH.cpNext++;
+      if (TH.cpNext < TH.laps*4){ TH.clock += add; TT_SND.cp();
+        thMsg(k === 3 ? `LAP ${Math.floor(TH.cpNext/4) + 1}/${TH.laps} · +${add.toFixed(1)} s` : `CHECKPOINT +${add.toFixed(1)} s`, 'cp'); }
+    }
+    R.lap = clamp(Math.floor(P.u/N) + 1, 1, TH.laps);
+    TH.clock -= 0.05;
+    if (TH.clock <= 0 && !R.finished){ TH.clock = 0; R.retired = 'time'; TT_SND.bad(); ttBig('<b>TIME UP</b>', 3.5, 'dq');
+      const R0 = TT.R; setTimeout(() => { if (TT.R === R0) thResults(); }, 2200); }
+  }
+  // places: by progress, finishers by their time
+  const order = TH.ents.slice().sort((a, b) => (a.fin && b.fin) ? a.fin - b.fin : a.fin ? -1 : b.fin ? 1 : b.u - a.u);
+  order.forEach((e, i) => e.place = i + 1);
+  // canisters: a boat's centre within 90 units (and its height within 140) takes it; it comes back after 8 s
+  for (const c of TH.cans){
+    if (c.t > 0){ c.t -= 0.05; continue; }
+    const cy = c.high ? 115 : 25, dy = c.high ? 85 : 140;                    // the high ones need a jump (or a ramp)
+    for (const e of TH.ents){ const S = e.S;
+      if (Math.abs(S.cen[0] - c.x) < 90 && Math.abs(S.cen[2] - c.z) < 90 && Math.hypot(S.cen[0] - c.x, S.cen[2] - c.z) < 90 && Math.abs(S.cen[1] - cy) < dy){
+        e.boost = Math.min(TH.boostMax, e.boost + (c.red ? TH.red : TH.blue)); c.t = 8;
+        if (!e.cpu){ TT_SND.can(c.red); thMsg(c.red ? 'BOOST +9' : 'BOOST +4', c.red ? 'red' : 'blue'); }
+        break; } }
+  }
+  // the start: GO with the throttle timed right gives a boost start
+  if (TT.phase === 'race' && TH.startState){ if (TH.startState === 'boost'){ TH.boostT = 1.6; thMsg('BOOST START', 'cp'); TT_SND.boost(); } TH.startState = ''; }
+  // spray: a rooster tail off every boat that's moving, taller when boosting (only near the camera)
+  const cp = cam.pos || ski.p;
+  for (const e of TH.ents){ const S = e.S; if (!S.wetAny || S.B90 < 12) continue;
+    const X = TT.ox + S.cen[0]/WR.U, Z = TT.oz + S.cen[2]/WR.U; if (Math.hypot(X - cp[0], Z - cp[2]) > 140) continue;
+    const f = S.fwd, sp = S.B90*20/WR.U, boost = S.boostTh > 0, n = boost ? 9 : (e.cpu ? 4 : 0);
+    for (let k = 0; k < n; k++){ const r = Math.random(), s = (Math.random() - 0.5)*1.6;
+      emit(X - f[0]*1.3, S.cen[1]/WR.U + 0.1, Z - f[2]*1.3, -f[0]*sp*(0.25 + 0.2*r) + S.left[0]*s, (boost ? 4.5 : 2.5) + 3*Math.random(), -f[2]*sp*(0.25 + 0.2*r) + S.left[2]*s,
+           0.7 + 0.6*Math.random(), 0.05 + 0.06*Math.random(), 0, 0.85); } }
+}
+function thFinish(){
+  const R = TT.R, P = TH.player; R.finished = true; R.lap = TH.laps;
+  TT_SND.finish();
+  const nb = !TT.best || !(TT.best.total > 0) || R.time < TT.best.total;
+  if (nb) thSaveBest({ total: R.time, place: P.place, rider: TT.rider, date: Date.now() });
+  ttBig(`<b>${thOrd(P.place)}</b><small>${ttFmt(R.time)}${nb ? ' · NEW RECORD' : ''}</small>`, 3.5, 'fin');
+  const R0 = TT.R; setTimeout(() => { if (TT.R === R0) thResults(); }, 2200);
+}
+const thOrd = n => n + (n === 1 ? 'ST' : n === 2 ? 'ND' : n === 3 ? 'RD' : 'TH');
+const thKey = () => `clr.th.${TT.course.id}.${TT.R.diff}`;
+function thLoadBest(){ try { return JSON.parse(localStorage.getItem(thKey()) || 'null'); } catch(e){ return null; } }
+function thSaveBest(b){ try { localStorage.setItem(thKey(), JSON.stringify(b)); } catch(e){} TT.best = b; }
+function thResults(){
+  if (!TT.on || !TH.on) return;
+  const R = TT.R, c = TT.course, N = TH.line.N;
+  const order = TH.ents.slice().sort((a, b) => a.place - b.place);
+  const rows = order.map(e => `<tr${e.cpu ? '' : ' class="me"'}><td>${thOrd(e.place).toLowerCase()} · ${e.name}</td><td>${e.fin ? ttFmt(e.fin) : `lap ${clamp(Math.floor(e.u/N) + 1, 1, TH.laps)}`}</td></tr>`).join('');
+  document.getElementById('ttResBody').innerHTML = `<h2>${c.name} <small>Thunder Run · ${TT_DIFFS.find(d => d[0] === R.diff)[1]} · ${TT_RIDERS[TT.rider].name}</small></h2>` +
+    (R.retired === 'time' ? '<p class="bad">Time up: the clock ran out</p>' : R.retired ? '<p class="bad">Course out: retired</p>' : `<p class="big">${thOrd(TH.player.place)} · ${ttFmt(R.time)}</p>`) +
+    `<table>${rows}</table><p class="best">Record ${ttFmt(TT.best && TT.best.total)}</p>`;
+  $ttRes.hidden = false;
+}
+function thMsg(text, cls){ $ttPass.className = 'on th ' + cls; $ttPass.textContent = text; TT.passT = 1.3; }
+
+// ---- per rendered frame: HUD ----
+function thHud(){
+  const R = TT.R, P = TH.player;
+  document.getElementById('ttCourse').textContent = `${TT.course.name} · Thunder Run`;
+  document.getElementById('ttLap').innerHTML = `<b>${thOrd(P.place)}</b>/${TH.ents.length} · LAP <b>${R.finished ? TH.laps : R.lap}</b>/${TH.laps}`;
+  document.getElementById('ttTime').textContent = ttFmt(R.time);
+  document.getElementById('ttLaps').innerHTML = '';
+  const bb = document.querySelector('#thBoost i'); bb.style.width = `${P.boost/TH.boostMax*100}%`; bb.parentNode.classList.toggle('on', P.S.boostTh > 0);
+  document.getElementById('thBoostV').textContent = `BOOST ${P.boost.toFixed(1)} s`;
+  const bst = TT.best; document.getElementById('ttBest').textContent = bst && bst.total > 0 ? `Record ${ttFmt(bst.total)}` : '';
+  const $c = document.getElementById('thClock'), c = TH.clock;
+  $c.textContent = R.finished ? '' : c.toFixed(c < 10 ? 1 : 0); $c.classList.toggle('low', c < 10);
+}
+function thFrameUI(dt){
+  const R = TT.R, P = TH.player, S = TT.S, L = TH.line, N = L.N;
+  thHud();
+  // wrong way: heading well against the line for over a second
+  const i = ((Math.floor(P.u) % N) + N) % N, rel = thWrapA(L.hd[i] - Math.atan2(S.fwd[0], S.fwd[2]));
+  TH.wrongT = Math.abs(rel) > 2.1 && S.B90 > 6 && TT.phase === 'race' ? TH.wrongT + dt : 0;
+  const $dir = document.getElementById('ttDir'), show = TH.wrongT > 1.2 && !R.finished && !R.retired;
+  $dir.className = show ? 'on' : '';
+  if (show){ $dir.querySelector('i').style.transform = `rotate(${(-rel*180/Math.PI).toFixed(0)}deg)`; $dir.querySelector('span').textContent = 'Wrong way'; }
+  const $cue = document.getElementById('ttCue');
+  if (TT.phase === 'countdown'){ $cue.className = 'on fin'; $cue.textContent = 'Open the throttle on the last light for a boost start'; }
+  else $cue.className = '';
+  if (S.boostTh) ski.rpm = Math.max(ski.rpm, SKI.rpmLimit*0.97);
+}
+// the player's rider leans into the boost
+function thPose(pose){ if (TT.S.boostTh){ pose.attack = 1; pose.crouch = Math.max(pose.crouch, 0.35); } }
+
+// ---- drawing: canisters, the rivals, the checkpoint arches (built into the gates mesh) ----
+function thCanMesh(col){
+  const m = MeshB(), glow = lin(col[0], col[1], col[2], 0.95), white = lin(1.6, 1.6, 1.6, 0.9);
+  mbCapsule(m, [0, -0.45, 0], [0, 0.45, 0], 0.32, 0.32, glow, 16, 4);
+  mbCapsule(m, [0, -0.12, 0], [0, 0.12, 0], 0.345, 0.345, white, 16, 2);
+  mbCapsule(m, [0, 0.62, 0], [0, 0.78, 0], 0.14, 0.14, white, 10, 2);
+  return mbFinish(m);
+}
+const thBufs = { blue: makeGeoBuffer(false), red: makeGeoBuffer(false) };
+thBufs.blue.set(thCanMesh([0.35, 1.25, 2.4])); thBufs.red.set(thCanMesh([2.4, 0.35, 0.25]));
+function thGates(){
+  const L = TH.line, R = TT.R, out = [R.route.list[R.route.fin]];
+  for (const c of TH.cps.slice(0, 3)){ const i = c % L.N, h = L.hd[i], w = 560;
+    out.push({ gate: true, e1x: L.x[i] + Math.cos(h)*w, e1z: L.z[i] - Math.sin(h)*w, e2x: L.x[i] - Math.cos(h)*w, e2z: L.z[i] + Math.sin(h)*w }); }
+  return { list: out };
+}
+const _thM = new Float32Array(16), _thO = { P: new Float64Array(36) };
+function thSetM(R9, T){ _thM.set([R9[0], R9[3], R9[6], 0, R9[1], R9[4], R9[7], 0, R9[2], R9[5], R9[8], 0, T[0], T[1], T[2], 1]); gl.uniformMatrix4fv(pMesh.u.uM, false, _thM); }
+function thDraw(t, drawAt){
+  const U = WR.U, w = new Float64Array(7), alpha = clamp(TT.acc/0.01, 0, 1);
+  for (const c of TH.cans){ if (c.t > 0) continue;
+    const X = TT.ox + c.x/U, Z = TT.oz + c.z/U; waterSurface(ocean, X, Z, w);
+    drawAt(c.red ? thBufs.red : thBufs.blue, X, (c.high ? 115/U + 0.4 : w[0] + 0.75) + 0.15*Math.sin(t*3 + c.x), Z, 0, 0, t*2.5); }
+  for (const e of TH.ents){ if (!e.cpu) continue;
+    const S = e.S, P = _thO.P; for (let k = 0; k < 36; k++) P[k] = S.Pp[k] + (S.P[k] - S.Pp[k])*alpha;
+    wrOrient(_thO); let cx = 0, cy = 0, cz = 0; for (let i = 0; i < 12; i++){ cx += P[i*3]; cy += P[i*3+1]; cz += P[i*3+2]; }
+    const f = _thO.fwd, up = _thO.up, rt = [-_thO.left[0], -_thO.left[1], -_thO.left[2]];
+    const R9 = [rt[0], up[0], -f[0], rt[1], up[1], -f[1], rt[2], up[2], -f[2]], X = [TT.ox + cx/12/U, cy/12/U, TT.oz + cz/12/U];
+    const A = TT_ANCHOR, T = [X[0] - (R9[0]*A[0] + R9[1]*A[1] + R9[2]*A[2]), X[1] - (R9[3]*A[0] + R9[4]*A[1] + R9[5]*A[2]), X[2] - (R9[6]*A[0] + R9[7]*A[1] + R9[8]*A[2])];
+    thSetM(R9, T); gl.bindVertexArray(e.bufs.ski.vao); gl.drawElements(gl.TRIANGLES, e.bufs.ski.n, gl.UNSIGNED_INT, 0);
+    // the rider: on the ski, or (thrown off) treading water and climbing back on at the stern
+    const off = S.rs === RS.SWIM || (S.rs === RS.CLIMB && !S.k157C && S.c58 < 52);
+    if (off){ const B = S.rb, fr = alpha, H = RIDER_HIPS;
+      let O = [TT.ox + (B.pp[0] + (B.p[0] - B.pp[0])*fr)/U, (B.pp[1] + (B.p[1] - B.pp[1])*fr)/U, TT.oz + (B.pp[2] + (B.p[2] - B.pp[2])*fr)/U];
+      let dx = X[0] - O[0], dz = X[2] - O[2]; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+      let Rb = [-dz, 0, -dx, 0, 1, 0, dx, 0, -dz];                                    // upright, facing the ski
+      if (S.rs === RS.CLIMB){ const k = smoothstep(26, 50, S.c58 + fr), onO = [R9[0]*H[0] + R9[1]*H[1] + R9[2]*H[2] + T[0], R9[3]*H[0] + R9[4]*H[1] + R9[5]*H[2] + T[1], R9[6]*H[0] + R9[7]*H[1] + R9[8]*H[2] + T[2]];
+        const sternO = [X[0] - f[0]*1.6, X[1] - 0.15, X[2] - f[2]*1.6];
+        O = O.map((v, q) => v + (sternO[q] - v)*smoothstep(0, 26, S.c58 + fr)); O = O.map((v, q) => v + (onO[q] - v)*k);
+        if (k > 0.5) Rb = R9; }
+      const To = [O[0] - (Rb[0]*H[0] + Rb[1]*H[1] + Rb[2]*H[2]), O[1] - (Rb[3]*H[0] + Rb[4]*H[1] + Rb[5]*H[2]), O[2] - (Rb[6]*H[0] + Rb[7]*H[1] + Rb[8]*H[2])];
+      thSetM(Rb, To);
+    }
+    gl.bindVertexArray(e.bufs.rider.vao); gl.drawElements(gl.TRIANGLES, e.bufs.rider.n, gl.UNSIGNED_INT, 0);
+  }
+}
+
 /* ---------------- Input ---------------- */
 const keys = new Set();
 const $start = document.getElementById('start'), $msg = document.getElementById('msg'), $air = document.getElementById('air');
 let msgT = 0;
 function flash(text, secs=2.2){ $msg.textContent = text; $msg.classList.add('on'); msgT = secs; }
-let gameMode = Q.has('tt') || Q.has('course') ? 'tt' : 'free';
-{ if (!Q.has('tt') && !Q.has('course')){ let m = null; try { m = localStorage.getItem('clr.mode'); } catch(e){} if (m === 'tt') gameMode = 'tt'; } }
+let gameMode = Q.has('thunder') ? 'thunder' : Q.has('tt') || Q.has('course') ? 'tt' : 'free';
+{ if (!Q.has('tt') && !Q.has('course') && !Q.has('thunder')){ let m = null; try { m = localStorage.getItem('clr.mode'); } catch(e){} if (m === 'tt' || m === 'thunder') gameMode = m; } }
+const isRace = () => gameMode === 'tt' || gameMode === 'thunder';
 function start(){
   initAudio();
-  if (gameMode === 'tt'){
-    const sel = [TT.ci, TT.diff, TT.rider, TT.tune.join()].join('|');
+  if (isRace()){
+    const sel = [gameMode, TT.ci, TT.diff, TT.rider, TT.tune.join()].join('|');
     $start.hidden = true; started = true;
     if (!TT.on || TT.sel !== sel || TT.R.finished || TT.R.retired){ TT.sel = sel; ttStart(); } else TT.paused = false;
     return;
@@ -4861,17 +5250,19 @@ document.querySelectorAll('#craft button').forEach(b => {
 const $go = document.getElementById('go');
 function ttMenuSync(){
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === gameMode));
-  document.body.classList.toggle('ttsel', gameMode === 'tt');
-  document.getElementById('ttSetup').hidden = gameMode !== 'tt';
+  document.body.classList.toggle('ttsel', isRace()); document.body.classList.toggle('thsel', gameMode === 'thunder');
+  document.getElementById('ttSetup').hidden = !isRace();
   const c = TT_COURSES[TT.ci];
-  document.querySelectorAll('#ttCourses button').forEach(b => b.classList.toggle('on', +b.dataset.c === TT.ci));
+  if (gameMode === 'thunder' && !TH_COURSES.includes(TT_COURSES[TT.ci].id)) TT.ci = TT_COURSES.findIndex(c => c.id === TH_COURSES[0]);
+  document.querySelectorAll('#ttCourses button').forEach(b => { b.classList.toggle('on', +b.dataset.c === TT.ci);
+    b.disabled = gameMode === 'thunder' && !TH_COURSES.includes(TT_COURSES[+b.dataset.c].id); });
   document.querySelectorAll('#ttDiffs button').forEach(b => { b.disabled = !c.layouts[b.dataset.d]; b.classList.toggle('on', b.dataset.d === ttDiffOf(c)); });
   document.querySelectorAll('#ttRiders button').forEach(b => b.classList.toggle('on', +b.dataset.r === TT.rider));
   document.getElementById('ttRiderBlurb').textContent = TT_RIDERS[TT.rider].blurb;
   [['ttTuneG', 2], ['ttTuneE', 1], ['ttTuneH', 0]].forEach(([id, k]) => document.getElementById(id).value = k ? TT.tune[k] : 11 - TT.tune[k]);
-  let rec = null; try { rec = JSON.parse(localStorage.getItem(`clr.tt.${c.id}.${ttDiffOf(c)}`) || 'null'); } catch(e){}
-  document.getElementById('ttRec').textContent = rec && rec.total > 0 ? `Record: ${ttFmt(rec.total)} · best lap ${ttFmt(rec.lap)} (${TT_RIDERS[rec.rider] ? TT_RIDERS[rec.rider].name : ''})` : 'No record yet on this layout';
-  $go.innerHTML = gameMode === 'tt' ? (TT.on && !TT.R.finished && !TT.R.retired ? 'Click or press any key to resume · <kbd>R</kbd> restarts' : 'Click or press any key to race') : 'Click a jetski, or press any key to ride the highlighted one · <kbd>H</kbd> brings this back';
+  let rec = null; try { rec = JSON.parse(localStorage.getItem(`clr.${gameMode === 'thunder' ? 'th' : 'tt'}.${c.id}.${ttDiffOf(c)}`) || 'null'); } catch(e){}
+  document.getElementById('ttRec').textContent = rec && rec.total > 0 ? (gameMode === 'thunder' ? `Record: ${ttFmt(rec.total)} (${thOrd(rec.place || 1).toLowerCase()})` : `Record: ${ttFmt(rec.total)} · best lap ${ttFmt(rec.lap)} (${TT_RIDERS[rec.rider] ? TT_RIDERS[rec.rider].name : ''})`) : 'No record yet on this layout';
+  $go.innerHTML = isRace() ? (TT.on && !TT.R.finished && !TT.R.retired ? 'Click or press any key to resume · <kbd>R</kbd> restarts' : 'Click or press any key to race') : 'Click a jetski, or press any key to ride the highlighted one · <kbd>H</kbd> brings this back';
 }
 {
   const add = (host, html, data, fn) => { const b = document.createElement('button'); b.innerHTML = html; Object.assign(b.dataset, data);
@@ -5276,7 +5667,7 @@ function updateHUD(dt){
   $sub.textContent = `${(kmh/1.609).toFixed(0)} mph · ${(kmh/1.852).toFixed(0)} kn${ski.brake > ski.thr && ski.brake > 0.1 ? ' · REVERSE' : ''}`;
   $rpm.style.width = `${clamp(ski.rpm/SKI.rpmLimit, 0, 1)*100}%`; $rpmv.textContent = Math.round(ski.rpm/10)*10;
   $trim.style.left = `${(ski.trim - SKI.trimMin)/(SKI.trimMax - SKI.trimMin)*100}%`;
-  $mode.innerHTML = TT.on ? `<b>Time Trial</b> · ${TT_RIDERS[TT.rider].name} · ${camMode ? 'First person' : 'Chase'} · ${hasTouch ? 'tap for menu' : '<kbd>R</kbd> restart · <kbd>H</kbd> menu'}`
+  $mode.innerHTML = TT.on ? `<b>${TH.on ? 'Thunder Run' : 'Time Trial'}</b> · ${TT_RIDERS[TT.rider].name} · ${camMode ? 'First person' : 'Chase'} · ${hasTouch ? 'tap for menu' : '<kbd>R</kbd> restart · <kbd>H</kbd> menu'}`
                           : `<b>${CRAFT.name}</b> · ${camMode ? 'First person' : 'Chase'} · ${SEAS[ocean.sea].name} · ${hasTouch ? 'tap for menu' : '<kbd>H</kbd> help'}`;
 }
 
@@ -5442,7 +5833,7 @@ function frame(now){
   if (TT.on){ const S = TT.S;                    // Time Trial: the game's rider balance (func_8005DE24's filters)
     pose.steer = S.B60/70; pose.lean = Math.asin(clamp(20*S.bal/Math.max(S.C0C, 10), -0.8, 0.8));   // B60: the game's display lean, slewed 15 a frame
     pose.crouch = clamp(Math.max(crouch, 1 - S.C0C/34.11)*1.5, 0, 1); pose.attack = clamp((S.C10 + 27.3)/12, 0, 1);
-    ttRiderPose.dt = dt; ttRiderPose(pose); }
+    ttRiderPose.dt = dt; ttRiderPose(pose); if (TH.on) thPose(pose); }
   const rider = buildRider(pose, camMode === 1);
   riderBuf.set(rider.geo);
   const tc3 = performance.now();
